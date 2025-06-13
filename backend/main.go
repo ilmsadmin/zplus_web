@@ -36,6 +36,7 @@ func main() {
 
 	// Initialize services
 	userService := services.NewUserService(db.PostgreSQL)
+	blogService := services.NewBlogService(db.PostgreSQL)
 
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
@@ -78,7 +79,7 @@ func main() {
 	// Initialize handlers
 	authHandler := auth.NewAuthHandler(userService)
 	adminHandler := admin.NewAdminHandler(userService)
-	blogHandler := blog.NewBlogHandler()
+	blogHandler := blog.NewBlogHandler(blogService)
 
 	// Authentication routes
 	authGroup := api.Group("/auth")
