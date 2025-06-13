@@ -2,16 +2,25 @@ package blog
 
 import (
 	"strconv"
+	"strings"
+
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
+	"zplus_web/backend/middleware"
 	"zplus_web/backend/models"
+	"zplus_web/backend/services"
 )
 
 type BlogHandler struct {
-	// Database connection and services will be injected
+	blogService *services.BlogService
+	validator   *validator.Validate
 }
 
-func NewBlogHandler() *BlogHandler {
-	return &BlogHandler{}
+func NewBlogHandler(blogService *services.BlogService) *BlogHandler {
+	return &BlogHandler{
+		blogService: blogService,
+		validator:   validator.New(),
+	}
 }
 
 // GET /blog/posts - Get published blog posts (public)
@@ -23,26 +32,31 @@ func (h *BlogHandler) GetPosts(c *fiber.Ctx) error {
 	featured := c.Query("featured")
 	search := c.Query("search")
 
-	// TODO: Implement blog posts retrieval logic
-	// - Build query based on filters (category, featured, search)
-	// - Apply pagination
-	// - Include author and category information
-	_ = category  // Use variables to avoid compiler warnings
-	_ = featured
-	_ = search
-
-	posts := []models.BlogPost{
-		{
-			ID:            1,
-			Title:         "Welcome to ZPlus",
-			Slug:          "welcome-to-zplus",
-			Content:       "This is our first blog post...",
-			Excerpt:       &[]string{"Welcome to our new website"}[0],
-			Status:        "published",
-			IsFeatured:    true,
-			ViewCount:     125,
-		},
+	// Validate pagination
+	if page < 1 {
+		page = 1
 	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	// Get posts from database
+	posts, total, err := h.blogService.GetPosts(page, limit, category, featured, search)
+	if err != nil {
+		return c.Status(500).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Failed to retrieve blog posts",
+			Error: &models.ApiError{
+				Code:    "INTERNAL_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
+
+	// Calculate pagination info
+	totalPages := (total + limit - 1) / limit
+	hasNext := page < totalPages
+	hasPrev := page > 1
 
 	return c.JSON(models.ApiResponse{
 		Success: true,
@@ -50,10 +64,12 @@ func (h *BlogHandler) GetPosts(c *fiber.Ctx) error {
 		Data: map[string]interface{}{
 			"posts": posts,
 			"pagination": map[string]interface{}{
-				"page":        page,
-				"limit":       limit,
-				"total":       1,
-				"total_pages": 1,
+				"current_page": page,
+				"total_pages":  totalPages,
+				"total_items":  total,
+				"items_per_page": limit,
+				"has_next":     hasNext,
+				"has_prev":     hasPrev,
 			},
 		},
 	})
@@ -63,19 +79,38 @@ func (h *BlogHandler) GetPosts(c *fiber.Ctx) error {
 func (h *BlogHandler) GetPost(c *fiber.Ctx) error {
 	slug := c.Params("slug")
 
-	// TODO: Implement single post retrieval logic
-	// - Find post by slug
-	// - Increment view count
-	// - Include author and category information
+	if slug == "" {
+		return c.Status(400).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Post slug is required",
+			Error: &models.ApiError{
+				Code:    "VALIDATION_ERROR",
+				Details: "Slug parameter is missing",
+			},
+		})
+	}
 
-	post := models.BlogPost{
-		ID:         1,
-		Title:      "Welcome to ZPlus",
-		Slug:       slug,
-		Content:    "This is our first blog post with full content...",
-		Status:     "published",
-		IsFeatured: true,
-		ViewCount:  126, // Incremented
+	// Get post from database
+	post, err := h.blogService.GetPostBySlug(slug)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return c.Status(404).JSON(models.ApiResponse{
+				Success: false,
+				Message: "Blog post not found",
+				Error: &models.ApiError{
+					Code:    "NOT_FOUND",
+					Details: "No published post found with this slug",
+				},
+			})
+		}
+		return c.Status(500).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Failed to retrieve blog post",
+			Error: &models.ApiError{
+				Code:    "INTERNAL_ERROR",
+				Details: err.Error(),
+			},
+		})
 	}
 
 	return c.JSON(models.ApiResponse{
@@ -87,21 +122,17 @@ func (h *BlogHandler) GetPost(c *fiber.Ctx) error {
 
 // GET /blog/categories - Get all blog categories
 func (h *BlogHandler) GetCategories(c *fiber.Ctx) error {
-	// TODO: Implement categories retrieval logic
-
-	categories := []models.BlogCategory{
-		{
-			ID:          1,
-			Name:        "Company News",
-			Slug:        "company-news",
-			Description: &[]string{"News and updates about ZPlus"}[0],
-		},
-		{
-			ID:          2,
-			Name:        "Technology",
-			Slug:        "technology",
-			Description: &[]string{"Technical articles and insights"}[0],
-		},
+	// Get categories from database
+	categories, err := h.blogService.GetCategories()
+	if err != nil {
+		return c.Status(500).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Failed to retrieve blog categories",
+			Error: &models.ApiError{
+				Code:    "INTERNAL_ERROR",
+				Details: err.Error(),
+			},
+		})
 	}
 
 	return c.JSON(models.ApiResponse{
@@ -118,31 +149,32 @@ func (h *BlogHandler) AdminGetPosts(c *fiber.Ctx) error {
 	// Parse query parameters
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
-	status := c.Query("status")
 
-	// TODO: Implement admin posts retrieval logic
-	// - Include all statuses (draft, published, private)
-	// - Apply filters (status) and pagination
-	_ = status // Use variable to avoid compiler warning
-
-	posts := []models.BlogPost{
-		{
-			ID:         1,
-			Title:      "Welcome to ZPlus",
-			Slug:       "welcome-to-zplus",
-			Status:     "published",
-			IsFeatured: true,
-			ViewCount:  125,
-		},
-		{
-			ID:         2,
-			Title:      "Draft Post",
-			Slug:       "draft-post",
-			Status:     "draft",
-			IsFeatured: false,
-			ViewCount:  0,
-		},
+	// Validate pagination
+	if page < 1 {
+		page = 1
 	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	// Get posts from database
+	posts, total, err := h.blogService.AdminGetPosts(page, limit)
+	if err != nil {
+		return c.Status(500).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Failed to retrieve blog posts",
+			Error: &models.ApiError{
+				Code:    "INTERNAL_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
+
+	// Calculate pagination info
+	totalPages := (total + limit - 1) / limit
+	hasNext := page < totalPages
+	hasPrev := page > 1
 
 	return c.JSON(models.ApiResponse{
 		Success: true,
@@ -150,10 +182,12 @@ func (h *BlogHandler) AdminGetPosts(c *fiber.Ctx) error {
 		Data: map[string]interface{}{
 			"posts": posts,
 			"pagination": map[string]interface{}{
-				"page":        page,
-				"limit":       limit,
-				"total":       2,
-				"total_pages": 1,
+				"current_page": page,
+				"total_pages":  totalPages,
+				"total_items":  total,
+				"items_per_page": limit,
+				"has_next":     hasNext,
+				"has_prev":     hasPrev,
 			},
 		},
 	})
@@ -184,18 +218,68 @@ func (h *BlogHandler) AdminCreatePost(c *fiber.Ctx) error {
 		})
 	}
 
-	// TODO: Implement post creation logic
-	// - Validate input
-	// - Check slug uniqueness
-	// - Create post in database
-	// - Link categories
+	// Validate request
+	if err := h.validator.Struct(req); err != nil {
+		return c.Status(400).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Validation failed",
+			Error: &models.ApiError{
+				Code:    "VALIDATION_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
+
+	// Get current user from context
+	currentUser := middleware.GetCurrentUser(c)
+	authorID, ok := currentUser["id"].(int)
+	if !ok {
+		return c.Status(401).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Unable to get user information",
+			Error: &models.ApiError{
+				Code:    "AUTH_INVALID",
+				Details: "User ID not found in token",
+			},
+		})
+	}
+
+	// Create post
+	post, err := h.blogService.CreatePost(
+		authorID,
+		req.Title,
+		req.Slug,
+		req.Content,
+		req.Excerpt,
+		req.FeaturedImage,
+		req.Status,
+		req.IsFeatured,
+	)
+	if err != nil {
+		if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "unique") {
+			return c.Status(409).JSON(models.ApiResponse{
+				Success: false,
+				Message: "Post with this slug already exists",
+				Error: &models.ApiError{
+					Code:    "ALREADY_EXISTS",
+					Details: err.Error(),
+				},
+			})
+		}
+		return c.Status(500).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Failed to create blog post",
+			Error: &models.ApiError{
+				Code:    "INTERNAL_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
 
 	return c.JSON(models.ApiResponse{
 		Success: true,
 		Message: "Blog post created successfully",
-		Data: map[string]interface{}{
-			"id": 3,
-		},
+		Data:    post,
 	})
 }
 
@@ -213,18 +297,76 @@ func (h *BlogHandler) AdminUpdatePost(c *fiber.Ctx) error {
 		})
 	}
 
-	// TODO: Implement post update logic
-	// - Find existing post
-	// - Update fields
-	// - Update categories
-	_ = id // Use variable to avoid compiler warning
+	type UpdatePostRequest struct {
+		Title         string `json:"title" validate:"required,max=255"`
+		Slug          string `json:"slug" validate:"required,max=255"`
+		Content       string `json:"content" validate:"required"`
+		Excerpt       string `json:"excerpt,omitempty"`
+		FeaturedImage string `json:"featured_image,omitempty"`
+		Status        string `json:"status" validate:"required,oneof=draft published private"`
+		IsFeatured    bool   `json:"is_featured"`
+	}
+
+	var req UpdatePostRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Invalid request body",
+			Error: &models.ApiError{
+				Code:    "VALIDATION_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
+
+	// Validate request
+	if err := h.validator.Struct(req); err != nil {
+		return c.Status(400).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Validation failed",
+			Error: &models.ApiError{
+				Code:    "VALIDATION_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
+
+	// Update post
+	post, err := h.blogService.UpdatePost(
+		id,
+		req.Title,
+		req.Slug,
+		req.Content,
+		req.Excerpt,
+		req.FeaturedImage,
+		req.Status,
+		req.IsFeatured,
+	)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return c.Status(404).JSON(models.ApiResponse{
+				Success: false,
+				Message: "Blog post not found",
+				Error: &models.ApiError{
+					Code:    "NOT_FOUND",
+					Details: err.Error(),
+				},
+			})
+		}
+		return c.Status(500).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Failed to update blog post",
+			Error: &models.ApiError{
+				Code:    "INTERNAL_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
 
 	return c.JSON(models.ApiResponse{
 		Success: true,
 		Message: "Blog post updated successfully",
-		Data: map[string]interface{}{
-			"id": id,
-		},
+		Data:    post,
 	})
 }
 
@@ -242,11 +384,28 @@ func (h *BlogHandler) AdminDeletePost(c *fiber.Ctx) error {
 		})
 	}
 
-	// TODO: Implement post deletion logic
-	// - Find post
-	// - Remove category associations
-	// - Delete post
-	_ = id // Use variable to avoid compiler warning
+	// Delete post
+	err = h.blogService.DeletePost(id)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return c.Status(404).JSON(models.ApiResponse{
+				Success: false,
+				Message: "Blog post not found",
+				Error: &models.ApiError{
+					Code:    "NOT_FOUND",
+					Details: err.Error(),
+				},
+			})
+		}
+		return c.Status(500).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Failed to delete blog post",
+			Error: &models.ApiError{
+				Code:    "INTERNAL_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
 
 	return c.JSON(models.ApiResponse{
 		Success: true,
@@ -274,16 +433,44 @@ func (h *BlogHandler) AdminCreateCategory(c *fiber.Ctx) error {
 		})
 	}
 
-	// TODO: Implement category creation logic
-	// - Validate input
-	// - Check slug uniqueness
-	// - Create category in database
+	// Validate request
+	if err := h.validator.Struct(req); err != nil {
+		return c.Status(400).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Validation failed",
+			Error: &models.ApiError{
+				Code:    "VALIDATION_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
+
+	// Create category
+	category, err := h.blogService.CreateCategory(req.Name, req.Slug, req.Description)
+	if err != nil {
+		if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "unique") {
+			return c.Status(409).JSON(models.ApiResponse{
+				Success: false,
+				Message: "Category with this slug already exists",
+				Error: &models.ApiError{
+					Code:    "ALREADY_EXISTS",
+					Details: err.Error(),
+				},
+			})
+		}
+		return c.Status(500).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Failed to create blog category",
+			Error: &models.ApiError{
+				Code:    "INTERNAL_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
 
 	return c.JSON(models.ApiResponse{
 		Success: true,
 		Message: "Blog category created successfully",
-		Data: map[string]interface{}{
-			"id": 3,
-		},
+		Data:    category,
 	})
 }

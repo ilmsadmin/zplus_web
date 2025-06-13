@@ -1,16 +1,26 @@
 package auth
 
 import (
+	"strings"
+	"time"
+
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"zplus_web/backend/models"
+	"zplus_web/backend/services"
+	"zplus_web/backend/utils"
 )
 
 type AuthHandler struct {
-	// Database connection and services will be injected
+	userService *services.UserService
+	validator   *validator.Validate
 }
 
-func NewAuthHandler() *AuthHandler {
-	return &AuthHandler{}
+func NewAuthHandler(userService *services.UserService) *AuthHandler {
+	return &AuthHandler{
+		userService: userService,
+		validator:   validator.New(),
+	}
 }
 
 // POST /auth/register - Register new customer
@@ -27,18 +37,52 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 		})
 	}
 
-	// TODO: Implement user registration logic
-	// - Validate input
-	// - Check if user already exists
-	// - Hash password
-	// - Create user in database
-	// - Send email verification (optional)
+	// Validate request
+	if err := h.validator.Struct(req); err != nil {
+		return c.Status(400).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Validation failed",
+			Error: &models.ApiError{
+				Code:    "VALIDATION_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
+
+	// Create user
+	user, err := h.userService.CreateUser(req)
+	if err != nil {
+		if strings.Contains(err.Error(), "already exists") {
+			return c.Status(409).JSON(models.ApiResponse{
+				Success: false,
+				Message: "User already exists",
+				Error: &models.ApiError{
+					Code:    "ALREADY_EXISTS",
+					Details: err.Error(),
+				},
+			})
+		}
+		return c.Status(500).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Failed to create user",
+			Error: &models.ApiError{
+				Code:    "INTERNAL_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
 
 	return c.JSON(models.ApiResponse{
 		Success: true,
 		Message: "User registered successfully",
 		Data: map[string]interface{}{
-			"message": "Please check your email for verification",
+			"user": map[string]interface{}{
+				"id":       user.ID,
+				"username": user.Username,
+				"email":    user.Email,
+				"role":     user.Role,
+			},
+			"message": "Registration completed successfully",
 		},
 	})
 }
@@ -57,22 +101,63 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		})
 	}
 
-	// TODO: Implement login logic
-	// - Validate credentials
-	// - Generate JWT token
-	// - Store session
-	// - Return token and user info
+	// Validate request
+	if err := h.validator.Struct(req); err != nil {
+		return c.Status(400).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Validation failed",
+			Error: &models.ApiError{
+				Code:    "VALIDATION_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
+
+	// Authenticate user
+	user, err := h.userService.AuthenticateUser(req.Email, req.Password)
+	if err != nil {
+		return c.Status(401).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Invalid credentials",
+			Error: &models.ApiError{
+				Code:    "AUTH_INVALID",
+				Details: "Invalid email or password",
+			},
+		})
+	}
+
+	// Generate JWT token
+	token, err := utils.GenerateJWT(user.ID, user.Email, user.Role, user.Username)
+	if err != nil {
+		return c.Status(500).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Failed to generate token",
+			Error: &models.ApiError{
+				Code:    "INTERNAL_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
+
+	// Store session
+	expiresAt := time.Now().Add(24 * time.Hour)
+	err = h.userService.CreateSession(user.ID, token, expiresAt)
+	if err != nil {
+		// Log error but don't fail login
+		// Session storage is not critical for JWT-based auth
+	}
 
 	return c.JSON(models.ApiResponse{
 		Success: true,
 		Message: "Login successful",
 		Data: map[string]interface{}{
-			"token": "jwt_token_here",
+			"token": token,
 			"user": map[string]interface{}{
-				"id":       1,
-				"username": "user",
-				"email":    req.Email,
-				"role":     "customer",
+				"id":       user.ID,
+				"username": user.Username,
+				"email":    user.Email,
+				"role":     user.Role,
+				"full_name": user.FullName,
 			},
 		},
 	})
@@ -80,9 +165,13 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 
 // POST /auth/logout - User logout
 func (h *AuthHandler) Logout(c *fiber.Ctx) error {
-	// TODO: Implement logout logic
-	// - Invalidate token
-	// - Remove session
+	// Get token from Authorization header
+	authHeader := c.Get("Authorization")
+	if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+		token := strings.TrimPrefix(authHeader, "Bearer ")
+		// Invalidate session
+		h.userService.InvalidateSession(token)
+	}
 
 	return c.JSON(models.ApiResponse{
 		Success: true,

@@ -9,9 +9,17 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
 	
+	"zplus_web/backend/config"
+	"zplus_web/backend/database"
 	"zplus_web/backend/handlers/auth"
 	"zplus_web/backend/handlers/admin"
 	"zplus_web/backend/handlers/blog"
+	"zplus_web/backend/handlers/project"
+	"zplus_web/backend/handlers/upload"
+	"zplus_web/backend/handlers/payment"
+	"zplus_web/backend/handlers/wordpress"
+	"zplus_web/backend/middleware"
+	"zplus_web/backend/services"
 )
 
 func main() {
@@ -19,6 +27,23 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found")
 	}
+
+	// Load configuration
+	cfg := config.Load()
+
+	// Initialize database
+	db, err := database.NewDatabase(cfg)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
+
+	// Initialize services
+	userService := services.NewUserService(db.PostgreSQL)
+	blogService := services.NewBlogService(db.PostgreSQL)
+	projectService := services.NewProjectService(db.PostgreSQL)
+	paymentService := services.NewPaymentService(db.PostgreSQL)
+	wordpressService := services.NewWordPressService(db.PostgreSQL)
 
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
@@ -59,9 +84,13 @@ func main() {
 	})
 
 	// Initialize handlers
-	authHandler := auth.NewAuthHandler()
-	adminHandler := admin.NewAdminHandler()
-	blogHandler := blog.NewBlogHandler()
+	authHandler := auth.NewAuthHandler(userService)
+	adminHandler := admin.NewAdminHandler(userService)
+	blogHandler := blog.NewBlogHandler(blogService)
+	projectHandler := project.NewProjectHandler(projectService)
+	uploadHandler := upload.NewUploadHandler()
+	paymentHandler := payment.NewPaymentHandler(paymentService)
+	wordpressHandler := wordpress.NewWordPressHandler(wordpressService, blogService)
 
 	// Authentication routes
 	authGroup := api.Group("/auth")
@@ -77,30 +106,76 @@ func main() {
 	blogGroup.Get("/posts/:slug", blogHandler.GetPost)
 	blogGroup.Get("/categories", blogHandler.GetCategories)
 
+	// Public project routes
+	projectGroup := api.Group("/projects")
+	projectGroup.Get("/", projectHandler.GetProjects)
+	projectGroup.Get("/:slug", projectHandler.GetProject)
+
 	// Admin routes
 	adminAuthGroup := api.Group("/admin/auth")
 	adminAuthGroup.Post("/login", adminHandler.Login)
 
 	adminDashboardGroup := api.Group("/admin/dashboard")
-	// TODO: Add authentication middleware here
+	adminDashboardGroup.Use(middleware.AuthRequired(), middleware.AdminRequired())
 	adminDashboardGroup.Get("/stats", adminHandler.GetDashboardStats)
 	adminDashboardGroup.Get("/recent-activity", adminHandler.GetRecentActivity)
 
 	adminBlogGroup := api.Group("/admin/blog")
-	// TODO: Add authentication middleware here
+	adminBlogGroup.Use(middleware.AuthRequired(), middleware.AdminRequired())
 	adminBlogGroup.Get("/posts", blogHandler.AdminGetPosts)
 	adminBlogGroup.Post("/posts", blogHandler.AdminCreatePost)
 	adminBlogGroup.Put("/posts/:id", blogHandler.AdminUpdatePost)
 	adminBlogGroup.Delete("/posts/:id", blogHandler.AdminDeletePost)
 	adminBlogGroup.Post("/categories", blogHandler.AdminCreateCategory)
 
+	adminProjectGroup := api.Group("/admin/projects")
+	adminProjectGroup.Use(middleware.AuthRequired(), middleware.AdminRequired())
+	adminProjectGroup.Get("/", projectHandler.AdminGetProjects)
+	adminProjectGroup.Post("/", projectHandler.AdminCreateProject)
+	adminProjectGroup.Put("/:id", projectHandler.AdminUpdateProject)
+	adminProjectGroup.Delete("/:id", projectHandler.AdminDeleteProject)
+
+	// File upload routes
+	uploadGroup := api.Group("/upload")
+	uploadGroup.Use(middleware.AuthRequired())
+	uploadGroup.Post("/image", uploadHandler.UploadImage)
+	uploadGroup.Post("/file", uploadHandler.UploadFile)
+	uploadGroup.Post("/multiple", uploadHandler.UploadMultiple)
+
+	// Static file serving (no auth required for public files)
+	api.Get("/uploads/:category/:filename", uploadHandler.ServeFile)
+
+	// Wallet and payment routes
+	walletGroup := api.Group("/wallet")
+	walletGroup.Use(middleware.AuthRequired())
+	walletGroup.Get("/", paymentHandler.GetWallet)
+	walletGroup.Get("/transactions", paymentHandler.GetWalletTransactions)
+	walletGroup.Post("/deposit", paymentHandler.RequestDeposit)
+
+	pointsGroup := api.Group("/points")
+	pointsGroup.Use(middleware.AuthRequired())
+	pointsGroup.Get("/", paymentHandler.GetPoints)
+
+	// Payment callback (webhook) - no auth required
+	api.Post("/wallet/deposit/callback", paymentHandler.HandleDepositCallback)
+
+	// WordPress integration routes
+	adminWordPressGroup := api.Group("/admin/wordpress")
+	adminWordPressGroup.Use(middleware.AuthRequired(), middleware.AdminRequired())
+	adminWordPressGroup.Get("/sites", wordpressHandler.GetSites)
+	adminWordPressGroup.Post("/sites", wordpressHandler.CreateSite)
+	adminWordPressGroup.Post("/sites/:id/test", wordpressHandler.TestConnection)
+	adminWordPressGroup.Post("/sites/:id/sync", wordpressHandler.SyncFromWordPress)
+	adminWordPressGroup.Post("/sites/:id/publish/:post_id", wordpressHandler.PublishToWordPress)
+	adminWordPressGroup.Get("/sites/:id/logs", wordpressHandler.GetSyncLogs)
+
+	// WordPress webhook (no auth required for external webhook)
+	api.Post("/admin/wordpress/webhook", wordpressHandler.HandleWebhook)
+
 	// TODO: Add more route groups for:
-	// - Projects (/projects, /admin/projects)
 	// - Products (/products, /admin/products)
 	// - Orders (/orders)
 	// - Customers (/admin/customers)
-	// - WordPress integration (/admin/content)
-	// - File uploads (/upload)
 
 	// Get port from environment or use default
 	port := os.Getenv("PORT")
