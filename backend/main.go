@@ -17,6 +17,7 @@ import (
 	"zplus_web/backend/handlers/project"
 	"zplus_web/backend/handlers/upload"
 	"zplus_web/backend/handlers/payment"
+	"zplus_web/backend/handlers/wordpress"
 	"zplus_web/backend/middleware"
 	"zplus_web/backend/services"
 )
@@ -42,6 +43,7 @@ func main() {
 	blogService := services.NewBlogService(db.PostgreSQL)
 	projectService := services.NewProjectService(db.PostgreSQL)
 	paymentService := services.NewPaymentService(db.PostgreSQL)
+	wordpressService := services.NewWordPressService(db.PostgreSQL)
 
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
@@ -88,6 +90,7 @@ func main() {
 	projectHandler := project.NewProjectHandler(projectService)
 	uploadHandler := upload.NewUploadHandler()
 	paymentHandler := payment.NewPaymentHandler(paymentService)
+	wordpressHandler := wordpress.NewWordPressHandler(wordpressService, blogService)
 
 	// Authentication routes
 	authGroup := api.Group("/auth")
@@ -156,11 +159,23 @@ func main() {
 	// Payment callback (webhook) - no auth required
 	api.Post("/wallet/deposit/callback", paymentHandler.HandleDepositCallback)
 
+	// WordPress integration routes
+	adminWordPressGroup := api.Group("/admin/wordpress")
+	adminWordPressGroup.Use(middleware.AuthRequired(), middleware.AdminRequired())
+	adminWordPressGroup.Get("/sites", wordpressHandler.GetSites)
+	adminWordPressGroup.Post("/sites", wordpressHandler.CreateSite)
+	adminWordPressGroup.Post("/sites/:id/test", wordpressHandler.TestConnection)
+	adminWordPressGroup.Post("/sites/:id/sync", wordpressHandler.SyncFromWordPress)
+	adminWordPressGroup.Post("/sites/:id/publish/:post_id", wordpressHandler.PublishToWordPress)
+	adminWordPressGroup.Get("/sites/:id/logs", wordpressHandler.GetSyncLogs)
+
+	// WordPress webhook (no auth required for external webhook)
+	api.Post("/admin/wordpress/webhook", wordpressHandler.HandleWebhook)
+
 	// TODO: Add more route groups for:
 	// - Products (/products, /admin/products)
 	// - Orders (/orders)
 	// - Customers (/admin/customers)
-	// - WordPress integration (/admin/content)
 
 	// Get port from environment or use default
 	port := os.Getenv("PORT")
