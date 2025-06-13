@@ -46,6 +46,28 @@ export default function ProjectsPage() {
       demoUrl: 'https://demo.zplus.vn/analytics',
       thumbnail: '#4facfe',
       createdAt: '2024-09-10'
+    },
+    {
+      id: '5',
+      title: 'Learning Management System',
+      description: 'Hệ thống quản lý học tập trực tuyến',
+      status: 'COMPLETED',
+      featured: true,
+      technologies: ['Angular', 'Spring Boot', 'WebRTC', 'AWS'],
+      demoUrl: 'https://demo.zplus.vn/lms',
+      thumbnail: '#845ec2',
+      createdAt: '2024-08-05'
+    },
+    {
+      id: '6',
+      title: 'IoT Monitoring Platform',
+      description: 'Nền tảng giám sát thiết bị IoT thông minh',
+      status: 'ACTIVE',
+      featured: false,
+      technologies: ['React', 'Python', 'MQTT', 'InfluxDB'],
+      demoUrl: 'https://demo.zplus.vn/iot',
+      thumbnail: '#ff6b6b',
+      createdAt: '2024-07-12'
     }
   ]
 
@@ -123,17 +145,61 @@ export default function ProjectsPage() {
               <a href="/" style={{ color: '#2c3e50', textDecoration: 'none', fontWeight: '500' }}>Trang chủ</a>
               <a href="/blog" style={{ color: '#2c3e50', textDecoration: 'none', fontWeight: '500' }}>Blog</a>
               <a href="/projects" style={{ color: '#667eea', textDecoration: 'none', fontWeight: '600' }}>Dự án</a>
-              <a href="/services" style={{ color: '#2c3e50', textDecoration: 'none', fontWeight: '500' }}>Dịch vụ</a>
-              <a href="/contact" style={{ color: '#2c3e50', textDecoration: 'none', fontWeight: '500' }}>Liên hệ</a>
               <a href="/admin/dashboard" style={{ color: '#2c3e50', textDecoration: 'none', fontWeight: '500' }}>Admin</a>
             </div>
           </div>
         </nav>
 
+        {/* Filter Section */}
+        <section style={{
+          background: '#f8f9fa',
+          padding: '2rem 0'
+        }}>
+          <div style={{
+            maxWidth: '1200px',
+            margin: '0 auto',
+            padding: '0 2rem'
+          }}>
+            <div style={{
+              display: 'flex',
+              gap: '1rem',
+              justifyContent: 'center',
+              flexWrap: 'wrap'
+            }}>
+              {['Tất cả', 'Nổi bật', 'Hoàn thành', 'Đang thực hiện'].map(filter => (
+                <button key={filter} style={{
+                  padding: '10px 20px',
+                  background: filter === 'Tất cả' ? '#667eea' : 'white',
+                  color: filter === 'Tất cả' ? 'white' : '#2c3e50',
+                  border: `1px solid ${filter === 'Tất cả' ? '#667eea' : '#e0e6ed'}`,
+                  borderRadius: '25px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  if (filter !== 'Tất cả') {
+                    e.currentTarget.style.background = '#667eea'
+                    e.currentTarget.style.color = 'white'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (filter !== 'Tất cả') {
+                    e.currentTarget.style.background = 'white'
+                    e.currentTarget.style.color = '#2c3e50'
+                  }
+                }}>
+                  {filter}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* Projects Grid */}
         <section style={{
           padding: '4rem 0',
-          background: '#f8f9fa'
+          background: 'white'
         }}>
           <div style={{
             maxWidth: '1200px',
@@ -142,7 +208,7 @@ export default function ProjectsPage() {
           }}>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))',
               gap: '2rem'
             }}>
               {mockProjects.map(project => (
@@ -235,7 +301,7 @@ export default function ProjectsPage() {
                         color: '#2c3e50',
                         marginBottom: '0.5rem'
                       }}>
-                        Công nghệ:
+                        Công nghệ sử dụng:
                       </h4>
                       <div style={{
                         display: 'flex',
@@ -271,24 +337,47 @@ export default function ProjectsPage() {
                       }}>
                         <i className="fas fa-calendar"></i> {new Date(project.createdAt).toLocaleDateString('vi-VN')}
                       </span>
-                      <a href={project.demoUrl} target="_blank" style={{
-                        padding: '8px 16px',
-                        background: project.thumbnail,
-                        color: 'white',
-                        borderRadius: '20px',
-                        textDecoration: 'none',
-                        fontSize: '0.9rem',
-                        fontWeight: '600',
-                        transition: 'all 0.3s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'scale(1.05)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'scale(1)'
-                      }}>
-                        <i className="fas fa-external-link-alt"></i> Demo
-                      </a>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <a href={project.demoUrl} target="_blank" style={{
+                          padding: '8px 16px',
+                          background: project.thumbnail,
+                          color: 'white',
+                          borderRadius: '20px',
+                          textDecoration: 'none',
+                          fontSize: '0.9rem',
+                          fontWeight: '600',
+                          transition: 'all 0.3s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.05)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)'
+                        }}>
+                          <i className="fas fa-external-link-alt"></i> Demo
+                        </a>
+                        <button style={{
+                          padding: '8px 16px',
+                          background: 'transparent',
+                          color: project.thumbnail,
+                          border: `1px solid ${project.thumbnail}`,
+                          borderRadius: '20px',
+                          fontSize: '0.9rem',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = project.thumbnail
+                          e.currentTarget.style.color = 'white'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'transparent'
+                          e.currentTarget.style.color = project.thumbnail
+                        }}>
+                          <i className="fas fa-info-circle"></i> Chi tiết
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -325,10 +414,25 @@ export default function ProjectsPage() {
               thành hiện thực với công nghệ hiện đại nhất.
             </p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <a href="/" style={{
+              <a href="#contact" style={{
                 padding: '15px 30px',
                 background: '#f1c40f',
                 color: '#2c3e50',
+                borderRadius: '30px',
+                textDecoration: 'none',
+                fontWeight: '600',
+                fontSize: '1.1rem',
+                transition: 'all 0.3s ease',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '10px'
+              }}>
+                <i className="fas fa-paper-plane"></i> Bắt đầu dự án
+              </a>
+              <a href="/" style={{
+                padding: '15px 30px',
+                border: '2px solid white',
+                color: 'white',
                 borderRadius: '30px',
                 textDecoration: 'none',
                 fontWeight: '600',

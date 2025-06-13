@@ -149,8 +149,6 @@ export default function BlogPage() {
             <a href="/" style={{ color: 'white', textDecoration: 'none', fontWeight: '500' }}>Trang chủ</a>
             <a href="/blog" style={{ color: '#f1c40f', textDecoration: 'none', fontWeight: '500' }}>Blog</a>
             <a href="/projects" style={{ color: 'white', textDecoration: 'none', fontWeight: '500' }}>Dự án</a>
-            <a href="/services" style={{ color: 'white', textDecoration: 'none', fontWeight: '500' }}>Dịch vụ</a>
-            <a href="/contact" style={{ color: 'white', textDecoration: 'none', fontWeight: '500' }}>Liên hệ</a>
             <a href="/admin/dashboard" style={{ color: 'white', textDecoration: 'none', fontWeight: '500' }}>Admin</a>
           </div>
         </nav>

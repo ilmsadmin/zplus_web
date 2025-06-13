@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useQuery, gql } from '@apollo/client'
 
-// Simple GraphQL query for current user - matching the backend schema
-const GET_ME = gql`
-  query GetMe {
-    me {
+// Simple GraphQL query for users
+const GET_USERS = gql`
+  query GetUsers {
+    users {
       id
       email
       username
@@ -17,10 +17,9 @@ const GET_ME = gql`
 
 export default function Home() {
   const [backendStatus, setBackendStatus] = useState<string>('connecting...')
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
   
   // Use Apollo Client for GraphQL query
-  const { data: apolloData, loading, error } = useQuery(GET_ME, {
+  const { data: apolloData, loading, error } = useQuery(GET_USERS, {
     errorPolicy: 'all'
   })
 
@@ -89,16 +88,16 @@ export default function Home() {
               gap: '2rem',
               alignItems: 'center'
             }}>
-              <a href="/" style={{ color: 'white', textDecoration: 'none', fontWeight: '500' }}>Trang chủ</a>
-              <a href="/services" style={{ color: 'white', textDecoration: 'none', fontWeight: '500' }}>Dịch vụ</a>
-              <a href="/products" style={{ color: 'white', textDecoration: 'none', fontWeight: '500' }}>Sản phẩm</a>
+              <a href="#home" style={{ color: 'white', textDecoration: 'none', fontWeight: '500' }}>Trang chủ</a>
+              <a href="#services" style={{ color: 'white', textDecoration: 'none', fontWeight: '500' }}>Dịch vụ</a>
+              <a href="#products" style={{ color: 'white', textDecoration: 'none', fontWeight: '500' }}>Sản phẩm</a>
               <a href="/projects" style={{ color: 'white', textDecoration: 'none', fontWeight: '500' }}>Dự án</a>
               <a href="/blog" style={{ color: 'white', textDecoration: 'none', fontWeight: '500' }}>Blog</a>
-              <a href="/contact" style={{ color: 'white', textDecoration: 'none', fontWeight: '500' }}>Liên hệ</a>
+              <a href="#contact" style={{ color: 'white', textDecoration: 'none', fontWeight: '500' }}>Liên hệ</a>
             </div>
 
             <div style={{ display: 'flex', gap: '1rem' }}>
-              <a href="/login" style={{
+              <a href="/admin/dashboard" style={{
                 padding: '10px 20px',
                 border: '2px solid rgba(255,255,255,0.3)',
                 borderRadius: '25px',
@@ -107,9 +106,9 @@ export default function Home() {
                 fontWeight: '600',
                 transition: 'all 0.3s ease'
               }}>
-                <i className="fas fa-sign-in-alt"></i> Đăng nhập
+                <i className="fas fa-user-shield"></i> Admin
               </a>
-              <a href="/register" style={{
+              <a href="http://localhost:4001/playground" target="_blank" style={{
                 padding: '10px 20px',
                 background: '#f1c40f',
                 color: '#2c3e50',
@@ -118,7 +117,7 @@ export default function Home() {
                 fontWeight: '600',
                 transition: 'all 0.3s ease'
               }}>
-                <i className="fas fa-user-plus"></i> Đăng ký
+                <i className="fas fa-database"></i> GraphQL
               </a>
             </div>
           </nav>
@@ -194,10 +193,139 @@ export default function Home() {
           </div>
         </section>
 
+        {/* System Status Section */}
+        <section style={{
+          padding: '50px 0',
+          background: '#f8f9fa'
+        }}>
+          <div style={{
+            maxWidth: '1200px',
+            margin: '0 auto',
+            padding: '0 2rem'
+          }}>
+            <div style={{ 
+              backgroundColor: '#f5f5f5', 
+              padding: '1.5rem', 
+              borderRadius: '8px',
+              marginBottom: '2rem'
+            }}>
+              <h2 style={{ color: '#555', marginBottom: '1rem', textAlign: 'center' }}>
+                System Status - Docker Environment
+              </h2>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                gap: '20px'
+              }}>
+                <div style={{ marginBottom: '1rem' }}>
+                  <strong>Frontend (Port 3001):</strong> 
+                  <span style={{ color: 'green', marginLeft: '0.5rem' }}>
+                    ✓ Running (Next.js + Apollo Client)
+                  </span>
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <strong>Backend (Port 4001):</strong> 
+                  <span style={{ 
+                    color: backendStatus === 'connected' ? 'green' : 'red',
+                    marginLeft: '0.5rem'
+                  }}>
+                    {backendStatus === 'connected' ? '✓ Connected' : '✗ Disconnected'} 
+                    (GraphQL API)
+                  </span>
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <strong>GraphQL Query:</strong> 
+                  <span style={{ 
+                    color: loading ? 'orange' : error ? 'red' : apolloData ? 'green' : 'gray',
+                    marginLeft: '0.5rem'
+                  }}>
+                    {loading ? '⏳ Loading...' : 
+                     error ? '✗ Error' : 
+                     apolloData ? '✓ Success' : '○ Idle'}
+                  </span>
+                </div>
+              </div>
+              
+              {apolloData && (
+                <div style={{ 
+                  backgroundColor: '#e8f5e8', 
+                  padding: '1rem', 
+                  borderRadius: '4px',
+                  marginTop: '1rem'
+                }}>
+                  <strong>Apollo GraphQL Response:</strong>
+                  <p style={{ margin: '0.5rem 0', fontSize: '0.9em' }}>
+                    Found {apolloData.users?.length || 0} users in the system
+                  </p>
+                  <details style={{ marginTop: '0.5rem' }}>
+                    <summary style={{ cursor: 'pointer', fontSize: '0.9em' }}>Show raw data</summary>
+                    <pre style={{ margin: '0.5rem 0', fontSize: '0.8em', backgroundColor: '#f9f9f9', padding: '0.5rem' }}>
+                      {JSON.stringify(apolloData, null, 2)}
+                    </pre>
+                  </details>
+                </div>
+              )}
+
+              {error && (
+                <div style={{ 
+                  backgroundColor: '#ffe8e8', 
+                  padding: '1rem', 
+                  borderRadius: '4px',
+                  marginTop: '1rem'
+                }}>
+                  <strong>GraphQL Error:</strong>
+                  <pre style={{ margin: '0.5rem 0', fontSize: '0.8em', color: '#d32f2f' }}>
+                    {error.message}
+                  </pre>
+                </div>
+              )}
+            </div>
+
+            <div style={{ 
+              backgroundColor: '#fff3e0', 
+              padding: '1.5rem', 
+              borderRadius: '8px',
+              marginTop: '2rem'
+            }}>
+              <h2 style={{ color: '#555', marginBottom: '1rem' }}>
+                GraphQL Endpoints
+              </h2>
+              <ul style={{ listStyle: 'none', padding: 0 }}>
+                <li style={{ marginBottom: '0.5rem' }}>
+                  <strong>GraphQL API:</strong> 
+                  <code style={{ marginLeft: '0.5rem', padding: '2px 4px', backgroundColor: '#f5f5f5' }}>
+                    http://localhost:4001/graphql
+                  </code>
+                </li>
+                <li style={{ marginBottom: '0.5rem' }}>
+                  <strong>GraphQL Playground:</strong> 
+                  <a 
+                    href="http://localhost:4001/playground" 
+                    target="_blank" 
+                    style={{ marginLeft: '0.5rem', color: '#1976d2' }}
+                  >
+                    http://localhost:4001/playground
+                  </a>
+                </li>
+                <li style={{ marginBottom: '0.5rem' }}>
+                  <strong>Health Check:</strong> 
+                  <a 
+                    href="http://localhost:4001/health" 
+                    target="_blank" 
+                    style={{ marginLeft: '0.5rem', color: '#1976d2' }}
+                  >
+                    http://localhost:4001/health
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
         {/* Services Section */}
         <section id="services" style={{
           padding: '100px 0',
-          background: '#f8f9fa'
+          background: 'white'
         }}>
           <div style={{
             maxWidth: '1200px',
@@ -303,142 +431,145 @@ export default function Home() {
           </div>
         </section>
 
-        {/* System Status Section */}
-        <section style={{
-          padding: '50px 0',
-          background: 'white'
+        {/* Products Section */}
+        <section id="products" style={{
+          padding: '100px 0',
+          background: '#f8f9fa'
         }}>
           <div style={{
-            maxWidth: '800px',
+            maxWidth: '1200px',
             margin: '0 auto',
             padding: '0 2rem'
           }}>
-            <div style={{
-              background: '#f8f9fa',
-              padding: '30px',
-              borderRadius: '15px',
-              boxShadow: '0 5px 15px rgba(0,0,0,0.1)'
-            }}>
-              <h3 style={{
-                fontSize: '1.5rem',
+            <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+              <h2 style={{
+                fontSize: '2.5rem',
                 fontWeight: '700',
                 color: '#2c3e50',
-                marginBottom: '20px',
-                textAlign: 'center'
+                marginBottom: '1rem'
               }}>
-                Trạng thái hệ thống
-              </h3>
-              
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: '20px'
+                Sản phẩm phần mềm
+              </h2>
+              <p style={{
+                fontSize: '1.1rem',
+                color: '#7f8c8d',
+                maxWidth: '600px',
+                margin: '0 auto'
               }}>
-                <div style={{
+                Các sản phẩm phần mềm chất lượng cao được thiết kế để tối ưu hóa hoạt động kinh doanh
+              </p>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
+              gap: '40px'
+            }}>
+              {[
+                {
+                  name: 'CRM Pro',
+                  price: '2,999,000',
+                  description: 'Hệ thống quản lý khách hàng chuyên nghiệp',
+                  features: ['Quản lý khách hàng', 'Theo dõi bán hàng', 'Báo cáo thống kê', 'Tích hợp email'],
+                  color: '#667eea'
+                },
+                {
+                  name: 'Inventory Manager',
+                  price: '1,999,000',
+                  description: 'Phần mềm quản lý kho hàng thông minh',
+                  features: ['Quản lý tồn kho', 'Nhập/xuất hàng', 'Cảnh báo hết hàng', 'Báo cáo doanh thu'],
+                  color: '#56ab2f'
+                },
+                {
+                  name: 'Analytics Dashboard',
+                  price: '3,999,000',
+                  description: 'Bảng điều khiển phân tích dữ liệu',
+                  features: ['Phân tích real-time', 'Biểu đồ tương tác', 'Machine Learning', 'API tích hợp'],
+                  color: '#f093fb'
+                }
+              ].map((product, index) => (
+                <div key={index} style={{
                   background: 'white',
-                  padding: '20px',
-                  borderRadius: '10px',
-                  textAlign: 'center'
+                  border: '1px solid #e0e6ed',
+                  borderRadius: '15px',
+                  overflow: 'hidden',
+                  boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
+                  transition: 'transform 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-5px)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)'
                 }}>
                   <div style={{
-                    fontSize: '1.1rem',
-                    fontWeight: '600',
-                    color: '#2c3e50',
-                    marginBottom: '10px'
+                    background: `linear-gradient(135deg, ${product.color} 0%, ${product.color}80 100%)`,
+                    padding: '30px',
+                    textAlign: 'center',
+                    color: 'white'
                   }}>
-                    Backend API
+                    <h3 style={{
+                      fontSize: '1.8rem',
+                      fontWeight: '700',
+                      marginBottom: '10px'
+                    }}>
+                      {product.name}
+                    </h3>
+                    <p style={{
+                      opacity: 0.9,
+                      marginBottom: '20px'
+                    }}>
+                      {product.description}
+                    </p>
+                    <div style={{
+                      fontSize: '2.5rem',
+                      fontWeight: '700'
+                    }}>
+                      {product.price}₫
+                    </div>
                   </div>
-                  <div style={{
-                    color: backendStatus === 'connected' ? '#27ae60' : '#e74c3c',
-                    fontWeight: '600',
-                    fontSize: '1rem'
-                  }}>
-                    {backendStatus === 'connected' ? '✓ Online' : '✗ Offline'}
-                  </div>
-                </div>
-
-                <div style={{
-                  background: 'white',
-                  padding: '20px',
-                  borderRadius: '10px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{
-                    fontSize: '1.1rem',
-                    fontWeight: '600',
-                    color: '#2c3e50',
-                    marginBottom: '10px'
-                  }}>
-                    GraphQL
-                  </div>
-                  <div style={{
-                    color: loading ? '#f39c12' : error ? '#e74c3c' : apolloData ? '#27ae60' : '#7f8c8d',
-                    fontWeight: '600',
-                    fontSize: '1rem'
-                  }}>
-                    {loading ? '⏳ Loading' : 
-                     error ? '✗ Error' : 
-                     apolloData ? '✓ Connected' : '○ Idle'}
-                  </div>
-                </div>
-
-                <div style={{
-                  background: 'white',
-                  padding: '20px',
-                  borderRadius: '10px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{
-                    fontSize: '1.1rem',
-                    fontWeight: '600',
-                    color: '#2c3e50',
-                    marginBottom: '10px'
-                  }}>
-                    Current User
-                  </div>
-                  <div style={{
-                    color: '#667eea',
-                    fontWeight: '600',
-                    fontSize: '1rem'
-                  }}>
-                    {apolloData?.me?.username || 'Not logged in'}
+                  <div style={{ padding: '30px' }}>
+                    <ul style={{
+                      listStyle: 'none',
+                      padding: 0,
+                      marginBottom: '30px'
+                    }}>
+                      {product.features.map((feature, fIndex) => (
+                        <li key={fIndex} style={{
+                          padding: '8px 0',
+                          borderBottom: '1px solid #f0f0f0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px'
+                        }}>
+                          <i className="fas fa-check" style={{ color: '#27ae60' }}></i>
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                    <button style={{
+                      width: '100%',
+                      padding: '15px',
+                      background: `linear-gradient(135deg, ${product.color} 0%, ${product.color}80 100%)`,
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '10px',
+                      fontSize: '1.1rem',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease'
+                    }}>
+                      <i className="fas fa-shopping-cart"></i> Mua ngay
+                    </button>
                   </div>
                 </div>
-              </div>
-
-              {apolloData && (
-                <div style={{
-                  background: '#e8f5e8',
-                  padding: '20px',
-                  borderRadius: '10px',
-                  marginTop: '20px'
-                }}>
-                  <strong>✅ GraphQL Connection Successful!</strong>
-                  <p style={{ margin: '10px 0 0 0', fontSize: '0.9rem' }}>
-                    Kết nối GraphQL hoạt động tốt. Đăng nhập dưới tên: <strong>{apolloData.me?.username}</strong> ({apolloData.me?.email})
-                  </p>
-                </div>
-              )}
-
-              {error && (
-                <div style={{
-                  background: '#ffe8e8',
-                  padding: '20px',
-                  borderRadius: '10px',
-                  marginTop: '20px'
-                }}>
-                  <strong>❌ GraphQL Error:</strong>
-                  <pre style={{ margin: '10px 0 0 0', fontSize: '0.8rem', color: '#d32f2f' }}>
-                    {error.message}
-                  </pre>
-                </div>
-              )}
+              ))}
             </div>
           </div>
         </section>
 
         {/* Footer */}
-        <footer style={{
+        <footer id="contact" style={{
           background: '#2c3e50',
           color: 'white',
           padding: '60px 0 30px'
@@ -473,29 +604,10 @@ export default function Home() {
                   Chúng tôi cung cấp các giải pháp công nghệ tổng thể 
                   để giúp doanh nghiệp phát triển trong kỷ nguyên số.
                 </p>
-                <div style={{ display: 'flex', gap: '15px' }}>
-                  {['facebook', 'twitter', 'linkedin', 'instagram'].map(social => (
-                    <a key={social} href="#" style={{
-                      width: '40px',
-                      height: '40px',
-                      background: '#34495e',
-                      borderRadius: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      textDecoration: 'none',
-                      transition: 'all 0.3s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#667eea'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = '#34495e'
-                    }}>
-                      <i className={`fab fa-${social}`}></i>
-                    </a>
-                  ))}
+                <div style={{ fontSize: '0.9rem', color: '#95a5a6' }}>
+                  <p><strong>Docker Environment:</strong></p>
+                  <p>Frontend: http://localhost:3001</p>
+                  <p>Backend: http://localhost:4001</p>
                 </div>
               </div>
 
@@ -505,26 +617,45 @@ export default function Home() {
                   fontWeight: '600',
                   marginBottom: '20px'
                 }}>
-                  Dịch vụ
+                  Development Links
                 </h4>
                 <ul style={{ listStyle: 'none', padding: 0 }}>
-                  {['Web Development', 'Mobile Apps', 'E-commerce', 'UI/UX Design', 'Consulting'].map(service => (
-                    <li key={service} style={{ marginBottom: '10px' }}>
-                      <a href="#" style={{
-                        color: '#bdc3c7',
-                        textDecoration: 'none',
-                        transition: 'color 0.3s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.color = '#f1c40f'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.color = '#bdc3c7'
-                      }}>
-                        {service}
-                      </a>
-                    </li>
-                  ))}
+                  <li style={{ marginBottom: '10px' }}>
+                    <a href="http://localhost:4001/playground" target="_blank" style={{
+                      color: '#bdc3c7',
+                      textDecoration: 'none',
+                      transition: 'color 0.3s ease'
+                    }}>
+                      🚀 GraphQL Playground
+                    </a>
+                  </li>
+                  <li style={{ marginBottom: '10px' }}>
+                    <a href="http://localhost:4001/health" target="_blank" style={{
+                      color: '#bdc3c7',
+                      textDecoration: 'none',
+                      transition: 'color 0.3s ease'
+                    }}>
+                      💚 Health Check
+                    </a>
+                  </li>
+                  <li style={{ marginBottom: '10px' }}>
+                    <a href="/admin/dashboard" style={{
+                      color: '#bdc3c7',
+                      textDecoration: 'none',
+                      transition: 'color 0.3s ease'
+                    }}>
+                      🛠️ Admin Panel
+                    </a>
+                  </li>
+                  <li style={{ marginBottom: '10px' }}>
+                    <a href="/projects" style={{
+                      color: '#bdc3c7',
+                      textDecoration: 'none',
+                      transition: 'color 0.3s ease'
+                    }}>
+                      📁 Projects
+                    </a>
+                  </li>
                 </ul>
               </div>
 
@@ -534,32 +665,21 @@ export default function Home() {
                   fontWeight: '600',
                   marginBottom: '20px'
                 }}>
-                  Liên kết
+                  Technology Stack
                 </h4>
                 <ul style={{ listStyle: 'none', padding: 0 }}>
-                  {[
-                    { name: 'Trang chủ', href: '/' },
-                    { name: 'Blog', href: '/blog' },
-                    { name: 'Dự án', href: '/projects' },
-                    { name: 'Admin Panel', href: '/admin/dashboard' },
-                    { name: 'GraphQL Playground', href: 'http://localhost:4001/playground' }
-                  ].map(link => (
-                    <li key={link.name} style={{ marginBottom: '10px' }}>
-                      <a href={link.href} style={{
-                        color: '#bdc3c7',
-                        textDecoration: 'none',
-                        transition: 'color 0.3s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.color = '#f1c40f'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.color = '#bdc3c7'
-                      }}>
-                        {link.name}
-                      </a>
-                    </li>
-                  ))}
+                  <li style={{ marginBottom: '0.5rem' }}>
+                    <strong>Frontend:</strong> Next.js, React, TypeScript
+                  </li>
+                  <li style={{ marginBottom: '0.5rem' }}>
+                    <strong>Backend:</strong> Golang with GraphQL
+                  </li>
+                  <li style={{ marginBottom: '0.5rem' }}>
+                    <strong>Database:</strong> PostgreSQL with Ent ORM
+                  </li>
+                  <li style={{ marginBottom: '0.5rem' }}>
+                    <strong>Container:</strong> Docker & Docker Compose
+                  </li>
                 </ul>
               </div>
 
@@ -598,7 +718,7 @@ export default function Home() {
               textAlign: 'center',
               color: '#bdc3c7'
             }}>
-              <p>© 2025 ZPlus. Tất cả quyền được bảo lưu.</p>
+              <p>© 2025 ZPlus. Tất cả quyền được bảo lưu. | Docker Environment - Development Mode</p>
             </div>
           </div>
         </footer>
