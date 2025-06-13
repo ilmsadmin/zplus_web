@@ -1,35 +1,37 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useQuery, gql } from '@apollo/client'
-
-// Simple GraphQL query for users
-const GET_USERS = gql`
-  query GetUsers {
-    users {
-      id
-      email
-      username
-      role
-    }
-  }
-`
 
 export default function Home() {
   const [backendStatus, setBackendStatus] = useState<string>('connecting...')
-  
-  // Use Apollo Client for GraphQL query
-  const { data: apolloData, loading, error } = useQuery(GET_USERS, {
-    errorPolicy: 'all'
-  })
+  const [apiData, setApiData] = useState<any>(null)
 
   useEffect(() => {
-    // Test health endpoint
+    // Test GraphQL backend connection
     const testBackend = async () => {
       try {
-        const response = await fetch('http://localhost:4001/health')
+        const response = await fetch('http://localhost:3002/graphql', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: `
+              query {
+                dashboardStats {
+                  totalUsers
+                  totalPosts
+                  totalProjects
+                }
+              }
+            `
+          })
+        })
+        
         if (response.ok) {
+          const data = await response.json()
           setBackendStatus('connected')
+          setApiData(data)
         } else {
           setBackendStatus('disconnected')
         }
@@ -61,7 +63,7 @@ export default function Home() {
           <div style={{ marginBottom: '1rem' }}>
             <strong>Frontend:</strong> 
             <span style={{ color: 'green', marginLeft: '0.5rem' }}>
-              ✓ Running (Next.js + Apollo Client)
+              ✓ Running (Next.js)
             </span>
           </div>
           <div style={{ marginBottom: '1rem' }}>
@@ -74,48 +76,16 @@ export default function Home() {
               (GraphQL API)
             </span>
           </div>
-          <div style={{ marginBottom: '1rem' }}>
-            <strong>GraphQL Query:</strong> 
-            <span style={{ 
-              color: loading ? 'orange' : error ? 'red' : apolloData ? 'green' : 'gray',
-              marginLeft: '0.5rem'
-            }}>
-              {loading ? '⏳ Loading...' : 
-               error ? '✗ Error' : 
-               apolloData ? '✓ Success' : '○ Idle'}
-            </span>
-          </div>
-          
-          {apolloData && (
+          {apiData && (
             <div style={{ 
               backgroundColor: '#e8f5e8', 
               padding: '1rem', 
               borderRadius: '4px',
               marginTop: '1rem'
             }}>
-              <strong>Apollo GraphQL Response:</strong>
-              <p style={{ margin: '0.5rem 0', fontSize: '0.9em' }}>
-                Found {apolloData.users?.length || 0} users in the system
-              </p>
-              <details style={{ marginTop: '0.5rem' }}>
-                <summary style={{ cursor: 'pointer', fontSize: '0.9em' }}>Show raw data</summary>
-                <pre style={{ margin: '0.5rem 0', fontSize: '0.8em', backgroundColor: '#f9f9f9', padding: '0.5rem' }}>
-                  {JSON.stringify(apolloData, null, 2)}
-                </pre>
-              </details>
-            </div>
-          )}
-
-          {error && (
-            <div style={{ 
-              backgroundColor: '#ffe8e8', 
-              padding: '1rem', 
-              borderRadius: '4px',
-              marginTop: '1rem'
-            }}>
-              <strong>GraphQL Error:</strong>
-              <pre style={{ margin: '0.5rem 0', fontSize: '0.8em', color: '#d32f2f' }}>
-                {error.message}
+              <strong>GraphQL Response:</strong>
+              <pre style={{ margin: '0.5rem 0', fontSize: '0.9em' }}>
+                {JSON.stringify(apiData, null, 2)}
               </pre>
             </div>
           )}
@@ -158,27 +128,27 @@ export default function Home() {
             <li style={{ marginBottom: '0.5rem' }}>
               <strong>GraphQL API:</strong> 
               <code style={{ marginLeft: '0.5rem', padding: '2px 4px', backgroundColor: '#f5f5f5' }}>
-                http://localhost:4001/graphql
+                http://localhost:3002/graphql
               </code>
             </li>
             <li style={{ marginBottom: '0.5rem' }}>
               <strong>GraphQL Playground:</strong> 
               <a 
-                href="http://localhost:4001/playground" 
+                href="http://localhost:3002/playground" 
                 target="_blank" 
                 style={{ marginLeft: '0.5rem', color: '#1976d2' }}
               >
-                http://localhost:4001/playground
+                http://localhost:3002/playground
               </a>
             </li>
             <li style={{ marginBottom: '0.5rem' }}>
               <strong>Health Check:</strong> 
               <a 
-                href="http://localhost:4001/health" 
+                href="http://localhost:3002/health" 
                 target="_blank" 
                 style={{ marginLeft: '0.5rem', color: '#1976d2' }}
               >
-                http://localhost:4001/health
+                http://localhost:3002/health
               </a>
             </li>
           </ul>
