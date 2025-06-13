@@ -9,9 +9,13 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
 	
+	"zplus_web/backend/config"
+	"zplus_web/backend/database"
 	"zplus_web/backend/handlers/auth"
 	"zplus_web/backend/handlers/admin"
 	"zplus_web/backend/handlers/blog"
+	"zplus_web/backend/middleware"
+	"zplus_web/backend/services"
 )
 
 func main() {
@@ -19,6 +23,19 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found")
 	}
+
+	// Load configuration
+	cfg := config.Load()
+
+	// Initialize database
+	db, err := database.NewDatabase(cfg)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
+
+	// Initialize services
+	userService := services.NewUserService(db.PostgreSQL)
 
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
@@ -59,8 +76,8 @@ func main() {
 	})
 
 	// Initialize handlers
-	authHandler := auth.NewAuthHandler()
-	adminHandler := admin.NewAdminHandler()
+	authHandler := auth.NewAuthHandler(userService)
+	adminHandler := admin.NewAdminHandler(userService)
 	blogHandler := blog.NewBlogHandler()
 
 	// Authentication routes
@@ -82,12 +99,12 @@ func main() {
 	adminAuthGroup.Post("/login", adminHandler.Login)
 
 	adminDashboardGroup := api.Group("/admin/dashboard")
-	// TODO: Add authentication middleware here
+	adminDashboardGroup.Use(middleware.AuthRequired(), middleware.AdminRequired())
 	adminDashboardGroup.Get("/stats", adminHandler.GetDashboardStats)
 	adminDashboardGroup.Get("/recent-activity", adminHandler.GetRecentActivity)
 
 	adminBlogGroup := api.Group("/admin/blog")
-	// TODO: Add authentication middleware here
+	adminBlogGroup.Use(middleware.AuthRequired(), middleware.AdminRequired())
 	adminBlogGroup.Get("/posts", blogHandler.AdminGetPosts)
 	adminBlogGroup.Post("/posts", blogHandler.AdminCreatePost)
 	adminBlogGroup.Put("/posts/:id", blogHandler.AdminUpdatePost)

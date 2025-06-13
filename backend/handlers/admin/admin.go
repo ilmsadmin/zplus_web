@@ -1,16 +1,23 @@
 package admin
 
 import (
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"zplus_web/backend/models"
+	"zplus_web/backend/services"
+	"zplus_web/backend/utils"
 )
 
 type AdminHandler struct {
-	// Database connection and services will be injected
+	userService *services.UserService
+	validator   *validator.Validate
 }
 
-func NewAdminHandler() *AdminHandler {
-	return &AdminHandler{}
+func NewAdminHandler(userService *services.UserService) *AdminHandler {
+	return &AdminHandler{
+		userService: userService,
+		validator:   validator.New(),
+	}
 }
 
 // POST /admin/auth/login - Admin login
@@ -27,22 +34,67 @@ func (h *AdminHandler) Login(c *fiber.Ctx) error {
 		})
 	}
 
-	// TODO: Implement admin login logic
-	// - Validate credentials
-	// - Check if user has admin role
-	// - Generate JWT token with admin permissions
-	// - Return token and admin user info
+	// Validate request
+	if err := h.validator.Struct(req); err != nil {
+		return c.Status(400).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Validation failed",
+			Error: &models.ApiError{
+				Code:    "VALIDATION_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
+
+	// Authenticate user
+	user, err := h.userService.AuthenticateUser(req.Email, req.Password)
+	if err != nil {
+		return c.Status(401).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Invalid credentials",
+			Error: &models.ApiError{
+				Code:    "AUTH_INVALID",
+				Details: "Invalid email or password",
+			},
+		})
+	}
+
+	// Check if user has admin role
+	if user.Role != "admin" {
+		return c.Status(403).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Admin access required",
+			Error: &models.ApiError{
+				Code:    "PERMISSION_DENIED",
+				Details: "Admin role required to access this resource",
+			},
+		})
+	}
+
+	// Generate JWT token
+	token, err := utils.GenerateJWT(user.ID, user.Email, user.Role, user.Username)
+	if err != nil {
+		return c.Status(500).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Failed to generate token",
+			Error: &models.ApiError{
+				Code:    "INTERNAL_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
 
 	return c.JSON(models.ApiResponse{
 		Success: true,
 		Message: "Admin login successful",
 		Data: map[string]interface{}{
-			"token": "admin_jwt_token_here",
+			"token": token,
 			"user": map[string]interface{}{
-				"id":       1,
-				"username": "admin",
-				"email":    req.Email,
-				"role":     "admin",
+				"id":       user.ID,
+				"username": user.Username,
+				"email":    user.Email,
+				"role":     user.Role,
+				"full_name": user.FullName,
 			},
 		},
 	})
