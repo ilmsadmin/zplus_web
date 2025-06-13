@@ -1,7 +1,16 @@
--- Initialize the database with all required tables
+# Database Schema Design
 
--- 1. Users table (enhanced)
-CREATE TABLE IF NOT EXISTS users (
+## Overview
+This document describes the database schema for the ZPlus Web application, including all tables needed for the admin panel and customer-facing features.
+
+## Tables
+
+### 1. Authentication & Users
+
+#### users
+Core user table for both administrators and customers.
+```sql
+CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
@@ -15,26 +24,26 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+```
 
--- User sessions
-CREATE TABLE IF NOT EXISTS user_sessions (
+#### user_sessions
+Track user login sessions.
+```sql
+CREATE TABLE user_sessions (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     token VARCHAR(255) UNIQUE NOT NULL,
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+```
 
--- 2. Blog Management
-CREATE TABLE IF NOT EXISTS blog_categories (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    slug VARCHAR(100) UNIQUE NOT NULL,
-    description TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
+### 2. Blog Management
 
-CREATE TABLE IF NOT EXISTS blog_posts (
+#### blog_posts
+Store blog articles and company activity posts.
+```sql
+CREATE TABLE blog_posts (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     slug VARCHAR(255) UNIQUE NOT NULL,
@@ -49,15 +58,36 @@ CREATE TABLE IF NOT EXISTS blog_posts (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+```
 
-CREATE TABLE IF NOT EXISTS blog_post_categories (
+#### blog_categories
+Categorize blog posts.
+```sql
+CREATE TABLE blog_categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    slug VARCHAR(100) UNIQUE NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+#### blog_post_categories
+Many-to-many relationship between posts and categories.
+```sql
+CREATE TABLE blog_post_categories (
     post_id INTEGER REFERENCES blog_posts(id) ON DELETE CASCADE,
     category_id INTEGER REFERENCES blog_categories(id) ON DELETE CASCADE,
     PRIMARY KEY (post_id, category_id)
 );
+```
 
--- 3. Project Management
-CREATE TABLE IF NOT EXISTS projects (
+### 3. Project Management
+
+#### projects
+Company projects and portfolio.
+```sql
+CREATE TABLE projects (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     slug VARCHAR(255) UNIQUE NOT NULL,
@@ -77,19 +107,14 @@ CREATE TABLE IF NOT EXISTS projects (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+```
 
--- 4. Product Categories (must be created before software_products)
-CREATE TABLE IF NOT EXISTS product_categories (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    slug VARCHAR(100) UNIQUE NOT NULL,
-    description TEXT,
-    parent_id INTEGER REFERENCES product_categories(id),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
+### 4. Market & Software Sales
 
--- 5. Software Products & Market
-CREATE TABLE IF NOT EXISTS software_products (
+#### software_products
+Software products for sale.
+```sql
+CREATE TABLE software_products (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     slug VARCHAR(255) UNIQUE NOT NULL,
@@ -111,8 +136,25 @@ CREATE TABLE IF NOT EXISTS software_products (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+```
 
-CREATE TABLE IF NOT EXISTS product_files (
+#### product_categories
+Categories for software products.
+```sql
+CREATE TABLE product_categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    slug VARCHAR(100) UNIQUE NOT NULL,
+    description TEXT,
+    parent_id INTEGER REFERENCES product_categories(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+#### product_files
+Files associated with software products.
+```sql
+CREATE TABLE product_files (
     id SERIAL PRIMARY KEY,
     product_id INTEGER REFERENCES software_products(id) ON DELETE CASCADE,
     filename VARCHAR(255) NOT NULL,
@@ -123,9 +165,14 @@ CREATE TABLE IF NOT EXISTS product_files (
     is_main BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+```
 
--- 6. Customer Management
-CREATE TABLE IF NOT EXISTS customer_wallets (
+### 5. Customer Management
+
+#### customer_wallets
+Customer wallet for money management.
+```sql
+CREATE TABLE customer_wallets (
     id SERIAL PRIMARY KEY,
     user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
     balance DECIMAL(10,2) DEFAULT 0.00,
@@ -134,8 +181,12 @@ CREATE TABLE IF NOT EXISTS customer_wallets (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+```
 
-CREATE TABLE IF NOT EXISTS wallet_transactions (
+#### wallet_transactions
+Track all wallet transactions.
+```sql
+CREATE TABLE wallet_transactions (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     transaction_type VARCHAR(20) NOT NULL, -- 'deposit', 'purchase', 'refund'
@@ -146,8 +197,12 @@ CREATE TABLE IF NOT EXISTS wallet_transactions (
     status VARCHAR(20) DEFAULT 'completed', -- 'pending', 'completed', 'failed'
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+```
 
-CREATE TABLE IF NOT EXISTS customer_points (
+#### customer_points
+Customer loyalty points system.
+```sql
+CREATE TABLE customer_points (
     id SERIAL PRIMARY KEY,
     user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
     total_points INTEGER DEFAULT 0,
@@ -156,8 +211,12 @@ CREATE TABLE IF NOT EXISTS customer_points (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+```
 
-CREATE TABLE IF NOT EXISTS point_transactions (
+#### point_transactions
+Track point transactions.
+```sql
+CREATE TABLE point_transactions (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     points INTEGER NOT NULL,
@@ -167,9 +226,14 @@ CREATE TABLE IF NOT EXISTS point_transactions (
     expires_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+```
 
--- 7. Orders & Payments
-CREATE TABLE IF NOT EXISTS orders (
+### 6. Orders & Payments
+
+#### orders
+Customer orders for software products.
+```sql
+CREATE TABLE orders (
     id SERIAL PRIMARY KEY,
     order_number VARCHAR(50) UNIQUE NOT NULL,
     user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -183,8 +247,12 @@ CREATE TABLE IF NOT EXISTS orders (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+```
 
-CREATE TABLE IF NOT EXISTS order_items (
+#### order_items
+Items in each order.
+```sql
+CREATE TABLE order_items (
     id SERIAL PRIMARY KEY,
     order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
     product_id INTEGER REFERENCES software_products(id) ON DELETE SET NULL,
@@ -193,8 +261,12 @@ CREATE TABLE IF NOT EXISTS order_items (
     quantity INTEGER DEFAULT 1,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+```
 
-CREATE TABLE IF NOT EXISTS customer_downloads (
+#### customer_downloads
+Track customer downloads of purchased software.
+```sql
+CREATE TABLE customer_downloads (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     product_id INTEGER REFERENCES software_products(id) ON DELETE CASCADE,
@@ -206,9 +278,14 @@ CREATE TABLE IF NOT EXISTS customer_downloads (
     last_downloaded_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+```
 
--- 8. Content Management (WordPress Integration)
-CREATE TABLE IF NOT EXISTS wordpress_sites (
+### 7. Content Management (WordPress Integration)
+
+#### wordpress_sites
+Connected WordPress/WooCommerce sites.
+```sql
+CREATE TABLE wordpress_sites (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     url VARCHAR(255) NOT NULL,
@@ -220,8 +297,12 @@ CREATE TABLE IF NOT EXISTS wordpress_sites (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+```
 
-CREATE TABLE IF NOT EXISTS content_sync_logs (
+#### content_sync_logs
+Track content synchronization with WordPress sites.
+```sql
+CREATE TABLE content_sync_logs (
     id SERIAL PRIMARY KEY,
     site_id INTEGER REFERENCES wordpress_sites(id) ON DELETE CASCADE,
     sync_type VARCHAR(50) NOT NULL, -- 'post_create', 'post_update', 'post_delete'
@@ -231,32 +312,43 @@ CREATE TABLE IF NOT EXISTS content_sync_logs (
     error_message TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+```
 
--- Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
-CREATE INDEX IF NOT EXISTS idx_blog_posts_status ON blog_posts(status);
-CREATE INDEX IF NOT EXISTS idx_blog_posts_published_at ON blog_posts(published_at);
-CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
-CREATE INDEX IF NOT EXISTS idx_software_products_active ON software_products(is_active);
-CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
-CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(order_status);
-CREATE INDEX IF NOT EXISTS idx_wallet_transactions_user_id ON wallet_transactions(user_id);
-CREATE INDEX IF NOT EXISTS idx_point_transactions_user_id ON point_transactions(user_id);
+## Indexes
 
--- Insert initial data
+```sql
+-- Performance indexes
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_role ON users(role);
+CREATE INDEX idx_blog_posts_status ON blog_posts(status);
+CREATE INDEX idx_blog_posts_published_at ON blog_posts(published_at);
+CREATE INDEX idx_projects_status ON projects(status);
+CREATE INDEX idx_software_products_active ON software_products(is_active);
+CREATE INDEX idx_orders_user_id ON orders(user_id);
+CREATE INDEX idx_orders_status ON orders(order_status);
+CREATE INDEX idx_wallet_transactions_user_id ON wallet_transactions(user_id);
+CREATE INDEX idx_point_transactions_user_id ON point_transactions(user_id);
+```
+
+## Initial Data
+
+```sql
+-- Insert default admin user
 INSERT INTO users (username, email, password_hash, role, full_name, is_active, email_verified) 
 VALUES ('admin', 'admin@zplus.com', '$2a$10$example.hash.here', 'admin', 'System Administrator', true, true)
 ON CONFLICT (email) DO NOTHING;
 
+-- Insert default blog categories
 INSERT INTO blog_categories (name, slug, description) VALUES
 ('Company News', 'company-news', 'News and updates about ZPlus'),
 ('Technology', 'technology', 'Technical articles and insights'),
 ('Projects', 'projects', 'Project showcases and case studies')
 ON CONFLICT (slug) DO NOTHING;
 
+-- Insert default product categories
 INSERT INTO product_categories (name, slug, description) VALUES
 ('Web Applications', 'web-applications', 'Web-based software solutions'),
 ('Mobile Apps', 'mobile-apps', 'Mobile application solutions'),
 ('Desktop Software', 'desktop-software', 'Desktop application solutions')
 ON CONFLICT (slug) DO NOTHING;
+```

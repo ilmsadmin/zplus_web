@@ -1,104 +1,193 @@
 # ZPlus Web
 
-Full-stack web application for ZPlus company featuring a Golang backend with Fiber framework and Next.js frontend.
+Full-stack web application for ZPlus company featuring a Golang backend with Fiber framework and Next.js frontend. This application serves as a comprehensive platform for showcasing company services, managing projects, selling software products, and handling customer relationships.
 
-## Technology Stack
+## 🏗️ Architecture Overview
+
+ZPlus Web is designed as a modern full-stack application with the following key features:
+
+### Admin Panel Features
+- **Authentication & Authorization**: Secure admin login with role-based access
+- **Blog Management**: Create, edit, and publish blog posts and company news
+- **Project Showcase**: Manage and display company projects and portfolio
+- **Software Marketplace**: Sell and manage software products with file downloads
+- **Customer Management**: Handle user registrations, wallets, and loyalty points
+- **Content Sync**: Integration with WordPress/WooCommerce sites
+- **Dashboard Analytics**: Real-time statistics and activity monitoring
+
+### Customer-Facing Features
+- **Product Browsing**: Browse and purchase software products
+- **Blog Reading**: Access company blog and news
+- **Project Portfolio**: View company projects and case studies
+- **User Accounts**: Registration, profile management, and purchase history
+- **Digital Wallet**: Top-up balance and manage payments
+- **Download Center**: Access purchased software with secure downloads
+
+## 🚀 Technology Stack
 
 ### Backend
-- **Golang** with Fiber framework
-- **PostgreSQL** database
-- **Redis** for caching
-- **RESTful API** architecture
+- **Framework**: Golang with Fiber (Express-like framework)
+- **Database**: PostgreSQL with Redis caching
+- **Authentication**: JWT tokens with bcrypt password hashing
+- **API**: RESTful API with comprehensive endpoint coverage
 
 ### Frontend
-- **Next.js** with React
-- **TypeScript** for type safety
-- **Server-side rendering** (SSR)
+- **Framework**: Next.js 15 with App Router
+- **Language**: TypeScript for type safety
+- **Rendering**: Server-side rendering (SSR) and static generation
+- **Styling**: CSS Modules with responsive design
 
-## Prerequisites
+### Infrastructure
+- **Containerization**: Docker and Docker Compose
+- **Development**: Hot reload for both backend and frontend
+- **Database**: Automated migrations and seeding
 
-Make sure you have the following installed:
-- [Go](https://golang.org/dl/) (version 1.21 or higher)
-- [Node.js](https://nodejs.org/) (version 18 or higher)
+## 📁 Project Structure
+
+```
+zplus_web/
+├── docs/                    # 📚 Comprehensive documentation
+│   ├── database-schema.md   # Database design and relationships
+│   ├── api-documentation.md # Complete API reference
+│   ├── system-architecture.md # Architecture and design decisions
+│   └── setup-guide.md       # Detailed setup instructions
+├── backend/                 # 🔧 Go backend application
+│   ├── config/             # Configuration management
+│   ├── database/           # Database connection and utilities
+│   ├── handlers/           # HTTP request handlers by module
+│   │   ├── auth/           # Authentication endpoints
+│   │   ├── admin/          # Admin panel endpoints
+│   │   ├── blog/           # Blog management
+│   │   ├── projects/       # Project management
+│   │   ├── products/       # Product/marketplace management
+│   │   ├── customers/      # Customer management
+│   │   └── orders/         # Order processing
+│   ├── models/             # Data models and request/response types
+│   ├── middleware/         # HTTP middleware (auth, CORS, etc.)
+│   ├── services/           # Business logic layer
+│   ├── utils/              # Utility functions
+│   └── main.go             # Application entry point
+├── frontend/               # 🖥️ Next.js frontend application
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── (admin)/    # Admin panel routes
+│   │   │   │   └── admin/
+│   │   │   │       ├── dashboard/
+│   │   │   │       ├── blog/
+│   │   │   │       ├── projects/
+│   │   │   │       ├── products/
+│   │   │   │       ├── customers/
+│   │   │   │       └── content/
+│   │   │   ├── (customer)/ # Customer-facing routes
+│   │   │   │   ├── products/
+│   │   │   │   ├── blog/
+│   │   │   │   ├── projects/
+│   │   │   │   ├── profile/
+│   │   │   │   └── checkout/
+│   │   │   ├── auth/       # Authentication pages
+│   │   │   └── layout.tsx  # Root layout
+│   │   └── components/     # Reusable UI components
+│   │       ├── ui/         # Basic UI components
+│   │       ├── admin/      # Admin-specific components
+│   │       └── customer/   # Customer-specific components
+├── docker-compose.yml      # 🐳 Multi-service development environment
+├── init.sql                # 🗄️ Database schema and initial data
+└── README.md               # This file
+```
+
+## ⚡ Quick Start
+
+### Prerequisites
+- [Go](https://golang.org/dl/) (version 1.21+)
+- [Node.js](https://nodejs.org/) (version 18+)
 - [Docker](https://www.docker.com/) and Docker Compose
 - [Git](https://git-scm.com/)
 
-## Quick Start
-
-### 1. Clone the repository
+### 1. Clone and Setup
 ```bash
 git clone <repository-url>
 cd zplus_web
-```
 
-### 2. Start the database services
-```bash
-# Start PostgreSQL and Redis using Docker Compose
+# Start database services
 docker-compose up -d
-
-# Check if services are running
-docker-compose ps
 ```
 
-### 3. Setup Backend
-
+### 2. Backend Setup
 ```bash
-# Navigate to backend directory
 cd backend
 
-# Copy environment file
+# Configure environment
 cp .env.example .env
+# Edit .env with your preferences
 
-# Install dependencies
+# Install dependencies and build
 go mod tidy
-
-# Build the application
 go build -o server main.go
 
-# Run the backend server
+# Start the server
 ./server
 ```
 
-The backend API will be available at `http://localhost:3000`
+**Backend runs on**: `http://localhost:3000`
 
-### 4. Setup Frontend
-
+### 3. Frontend Setup
 ```bash
-# Navigate to frontend directory (in a new terminal)
 cd frontend
 
 # Install dependencies
 npm install
 
-# Start the development server
+# Start development server
 npm run dev
 ```
 
-The frontend will be available at `http://localhost:3001`
+**Frontend runs on**: `http://localhost:3001`
 
-## API Endpoints
+## 📖 Documentation
 
-### Health Check
-- `GET /health` - Check if the API is running
-- `GET /` - Welcome message
-- `GET /api/v1/ping` - Ping endpoint
+Comprehensive documentation is available in the `docs/` folder:
 
-### Available Routes
-The API provides the following endpoints:
-- Health check and status endpoints
-- User management (planned)
-- Authentication (planned)
+- **[Setup Guide](docs/setup-guide.md)**: Detailed installation and configuration
+- **[API Documentation](docs/api-documentation.md)**: Complete API reference with examples
+- **[Database Schema](docs/database-schema.md)**: Database design and relationships
+- **[System Architecture](docs/system-architecture.md)**: Technical architecture and design decisions
 
-## Development
+## 🔗 API Endpoints
+
+### Health & Status
+- `GET /health` - Service health check
+- `GET /api/v1/ping` - API connectivity test
+
+### Public Access
+- `GET /api/v1/blog/posts` - Published blog posts
+- `GET /api/v1/blog/posts/:slug` - Individual blog post
+- `GET /api/v1/projects` - Company projects
+- `GET /api/v1/products` - Software products
+
+### Authentication
+- `POST /api/v1/auth/register` - User registration
+- `POST /api/v1/auth/login` - User login
+- `POST /api/v1/admin/auth/login` - Admin login
+
+### Admin Panel
+- `GET /api/v1/admin/dashboard/stats` - Dashboard statistics
+- `POST /api/v1/admin/blog/posts` - Create blog post
+- `GET /api/v1/admin/blog/posts` - Manage blog posts
+- `POST /api/v1/admin/products` - Add software products
+
+*See [API Documentation](docs/api-documentation.md) for complete endpoint reference*
+
+## 🛠️ Development
 
 ### Backend Development
 ```bash
 cd backend
 
-# Run with hot reload (install air first: go install github.com/cosmtrek/air@latest)
+# Hot reload development (install air first)
+go install github.com/cosmtrek/air@latest
 air
 
-# Or run normally
+# Manual restart
 go run main.go
 ```
 
@@ -106,78 +195,99 @@ go run main.go
 ```bash
 cd frontend
 
-# Start development server
+# Development with hot reload
 npm run dev
 
-# Build for production
-npm run build
-
-# Start production server
-npm start
+# Production build
+npm run build && npm start
 ```
 
 ### Database Management
-
 ```bash
-# Connect to PostgreSQL
+# PostgreSQL access
 docker exec -it zplus_postgres psql -U postgres -d zplus_web
 
-# Connect to Redis
+# Redis access
 docker exec -it zplus_redis redis-cli
+
+# View logs
+docker-compose logs -f
 ```
 
-## Environment Variables
+## 🔧 Environment Configuration
 
 ### Backend (.env)
 ```env
+# Database
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=password
 DB_NAME=zplus_web
 
+# Redis
 REDIS_HOST=localhost
 REDIS_PORT=6379
-REDIS_PASSWORD=
 
+# Server
 PORT=3000
 ENV=development
 ```
 
-## Project Structure
-
-```
-zplus_web/
-├── backend/
-│   ├── config/         # Configuration files
-│   ├── database/       # Database connection
-│   ├── handlers/       # HTTP handlers
-│   ├── models/         # Data models
-│   ├── main.go         # Entry point
-│   ├── go.mod          # Go dependencies
-│   └── .env.example    # Environment template
-├── frontend/
-│   ├── src/
-│   │   ├── app/        # Next.js app directory
-│   │   ├── components/ # React components
-│   │   └── utils/      # Utility functions
-│   ├── package.json    # Node.js dependencies
-│   ├── next.config.js  # Next.js configuration
-│   └── tsconfig.json   # TypeScript configuration
-├── docker-compose.yml  # Docker services
-├── init.sql           # Database initialization
-├── .gitignore         # Git ignore rules
-└── README.md          # This file
+### Frontend (.env.local)
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3000/api/v1
 ```
 
-## Contributing
+## 🗄️ Database Schema
+
+The application uses PostgreSQL with the following main entities:
+
+- **Users**: Admin and customer accounts with role-based access
+- **Blog**: Posts, categories, and content management
+- **Projects**: Company portfolio and project showcase
+- **Products**: Software marketplace with files and downloads
+- **Orders**: Purchase processing and customer transactions
+- **Wallet**: Customer balance and transaction history
+- **WordPress Integration**: Content synchronization capabilities
+
+*See [Database Schema](docs/database-schema.md) for detailed table structure*
+
+## 🚀 Features Roadmap
+
+### Phase 1 (Current)
+- [x] Project structure and documentation
+- [x] Database schema design
+- [x] Basic API endpoints
+- [x] Admin panel layout
+- [x] Authentication framework
+
+### Phase 2 (Next)
+- [ ] Complete authentication implementation
+- [ ] Full CRUD operations for all modules
+- [ ] File upload and management
+- [ ] Payment processing integration
+- [ ] WordPress content synchronization
+
+### Phase 3 (Future)
+- [ ] Advanced analytics and reporting
+- [ ] Mobile application
+- [ ] Third-party integrations
+- [ ] Multi-language support
+- [ ] Advanced security features
+
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## License
+## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+---
+
+**ZPlus Web** - Empowering software companies with modern web solutions
