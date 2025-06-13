@@ -16,6 +16,11 @@ services:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - zplus_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   redis:
     image: redis:7-alpine
@@ -27,6 +32,42 @@ services:
       - redis_data:/data
     networks:
       - zplus_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: zplus_backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=zplus_web
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - PORT=3000
+      - ENV=production
+      - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+      - API_VERSION=v1.0.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - zplus_network
+    volumes:
+      - ./backend/logs:/app/logs
 
 volumes:
   postgres_data:

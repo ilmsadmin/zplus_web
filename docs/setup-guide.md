@@ -1,346 +1,373 @@
-# Project Setup Guide
+# ZPlus Web Setup Guide
 
-## Overview
-This guide will help you set up and run the ZPlus Web application locally and in production.
+## 🚀 Quick Start
 
-## Prerequisites
+### Prerequisites
+- **Go**: Version 1.21 or higher
+- **Node.js**: Version 18 or higher  
+- **Docker**: Latest version with Docker Compose
+- **PostgreSQL**: Version 15+ (via Docker)
+- **Redis**: Version 7+ (via Docker)
 
-Make sure you have the following installed:
-- [Go](https://golang.org/dl/) (version 1.21 or higher)
-- [Node.js](https://nodejs.org/) (version 18 or higher)
-- [Docker](https://www.docker.com/) and Docker Compose
-- [Git](https://git-scm.com/)
-
-## Local Development Setup
-
-### 1. Clone the Repository
+### 1. Clone and Setup
 ```bash
+# Clone the repository
 git clone <repository-url>
 cd zplus_web
+
+# Make scripts executable
+chmod +x *.sh
+
+# Setup development environment
+./setup-dev.sh
 ```
 
-### 2. Start Database Services
+### 2. Start Development Services
 ```bash
-# Start PostgreSQL and Redis using Docker Compose
-docker-compose up -d
+# Start PostgreSQL and Redis containers
+./start-dev.sh
 
-# Check if services are running
-docker-compose ps
+# This will start:
+# - PostgreSQL on port 5434
+# - Redis on port 6381
+# - pgAdmin on port 5050 (optional)
 ```
 
-### 3. Setup Backend
-
+### 3. Start Backend (GraphQL API)
 ```bash
-# Navigate to backend directory
+# Option 1: Use the startup script
+./start-graphql.sh
+
+# Option 2: Manual start
 cd backend
-
-# Copy environment file and configure
-cp .env.example .env
-# Edit .env file with your database credentials
-
-# Install dependencies
-go mod tidy
-
-# Run database migrations
-# The init.sql file will be executed automatically when PostgreSQL starts
-
-# Build the application
-go build -o server main.go
-
-# Run the backend server
-./server
+go run main_graphql.go
 ```
 
-The backend API will be available at `http://localhost:3000`
-
-### 4. Setup Frontend
-
+### 4. Verify Setup
 ```bash
-# Navigate to frontend directory (in a new terminal)
-cd frontend
+# Check API health
+curl http://localhost:3002/health
 
-# Install dependencies
-npm install
-
-# Start the development server
-npm run dev
+# Open GraphQL Playground
+open http://localhost:3002/playground
 ```
 
-The frontend will be available at `http://localhost:3001`
+## 🐳 Development Environment
 
-## API Testing
+### Docker Services
+The development environment uses Docker Compose with the following services:
 
-You can test the API endpoints using curl or a tool like Postman:
+**Database Services (`docker-compose.dev.yml`):**
+```yaml
+services:
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5434:5432"  # Custom port to avoid conflicts
+    environment:
+      POSTGRES_DB: zplus_db
+      POSTGRES_USER: zplus_user
+      POSTGRES_PASSWORD: zplus_password
 
-```bash
-# Test health check
-curl http://localhost:3000/health
-
-# Test blog posts
-curl http://localhost:3000/api/v1/blog/posts
-
-# Test admin dashboard stats (will return mock data)
-curl http://localhost:3000/api/v1/admin/dashboard/stats
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6381:6379"  # Custom port to avoid conflicts
 ```
 
-## Database Management
-
-### Connect to PostgreSQL
-```bash
-docker exec -it zplus_postgres psql -U postgres -d zplus_web
-```
-
-### Connect to Redis
-```bash
-docker exec -it zplus_redis redis-cli
-```
-
-### Running Custom Migrations
-If you need to run additional SQL migrations:
-
-```bash
-# Copy your migration file to the container
-docker cp migration.sql zplus_postgres:/tmp/
-
-# Execute the migration
-docker exec -it zplus_postgres psql -U postgres -d zplus_web -f /tmp/migration.sql
-```
-
-## Development Workflow
-
-### Backend Development
-```bash
-cd backend
-
-# For hot reload (install air first)
-go install github.com/cosmtrek/air@latest
-air
-
-# Or run normally
-go run main.go
-
-# Run tests (when available)
-go test ./...
-
-# Format code
-go fmt ./...
-```
-
-### Frontend Development
-```bash
-cd frontend
-
-# Start development server with hot reload
-npm run dev
-
-# Build for production
-npm run build
-
-# Start production server
-npm start
-
-# Run linting
-npm run lint
-```
-
-## Project Structure
-
-```
-zplus_web/
-├── docs/                   # Documentation
-│   ├── database-schema.md
-│   ├── api-documentation.md
-│   ├── system-architecture.md
-│   └── setup-guide.md
-├── backend/                # Go backend
-│   ├── config/            # Configuration management
-│   ├── database/          # Database connection
-│   ├── handlers/          # HTTP request handlers
-│   │   ├── auth/          # Authentication handlers
-│   │   ├── admin/         # Admin handlers
-│   │   ├── blog/          # Blog handlers
-│   │   ├── projects/      # Project handlers (to be implemented)
-│   │   ├── products/      # Product handlers (to be implemented)
-│   │   ├── customers/     # Customer handlers (to be implemented)
-│   │   └── orders/        # Order handlers (to be implemented)
-│   ├── models/            # Data models and structs
-│   ├── main.go            # Application entry point
-│   ├── go.mod             # Go dependencies
-│   └── .env.example       # Environment template
-├── frontend/              # Next.js frontend
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── (admin)/   # Admin panel routes
-│   │   │   │   ├── admin/
-│   │   │   │   │   ├── dashboard/
-│   │   │   │   │   ├── blog/
-│   │   │   │   │   ├── projects/
-│   │   │   │   │   ├── products/
-│   │   │   │   │   ├── customers/
-│   │   │   │   │   └── content/
-│   │   │   │   └── layout.tsx
-│   │   │   ├── (customer)/ # Customer routes
-│   │   │   ├── auth/      # Authentication pages
-│   │   │   └── layout.tsx
-│   │   └── components/    # Reusable components
-│   ├── package.json       # Node.js dependencies
-│   ├── next.config.js     # Next.js configuration
-│   └── tsconfig.json      # TypeScript configuration
-├── docker-compose.yml     # Docker services
-├── init.sql              # Database initialization
-├── .gitignore            # Git ignore rules
-└── README.md             # Project overview
-```
-
-## Available API Endpoints
-
-### Public Endpoints
-- `GET /health` - Health check
-- `GET /api/v1/ping` - Ping test
-- `GET /api/v1/blog/posts` - Get published blog posts
-- `GET /api/v1/blog/posts/:slug` - Get single blog post
-- `GET /api/v1/blog/categories` - Get blog categories
-
-### Authentication
-- `POST /api/v1/auth/register` - Register new user
-- `POST /api/v1/auth/login` - User login
-- `POST /api/v1/auth/logout` - User logout
-- `POST /api/v1/auth/forgot-password` - Request password reset
-- `POST /api/v1/auth/reset-password` - Reset password
-
-### Admin Endpoints
-- `POST /api/v1/admin/auth/login` - Admin login
-- `GET /api/v1/admin/dashboard/stats` - Dashboard statistics
-- `GET /api/v1/admin/dashboard/recent-activity` - Recent activity
-- `GET /api/v1/admin/blog/posts` - Get all posts (admin)
-- `POST /api/v1/admin/blog/posts` - Create blog post
-- `PUT /api/v1/admin/blog/posts/:id` - Update blog post
-- `DELETE /api/v1/admin/blog/posts/:id` - Delete blog post
-- `POST /api/v1/admin/blog/categories` - Create blog category
-
-## Environment Variables
-
-### Backend (.env)
+### Environment Configuration
+**Backend Environment (`.env`):**
 ```env
 # Database Configuration
 DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=password
-DB_NAME=zplus_web
+DB_PORT=5434
+DB_USER=zplus_user
+DB_PASSWORD=zplus_password
+DB_NAME=zplus_db
 
-# Redis Configuration
+# Redis Configuration  
 REDIS_HOST=localhost
-REDIS_PORT=6379
+REDIS_PORT=6381
 REDIS_PASSWORD=
 
 # Server Configuration
-PORT=3000
-ENV=development
+PORT=3002
+JWT_SECRET=your-super-secret-jwt-key-change-in-production
 
-# JWT Configuration (add these)
-JWT_SECRET=your-secret-key-here
-JWT_EXPIRES_IN=24h
-
-# Email Configuration (for future implementation)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-password
+# Development Settings
+GO_ENV=development
+LOG_LEVEL=debug
 ```
 
-### Frontend (.env.local)
-```env
-NEXT_PUBLIC_API_URL=http://localhost:3000/api/v1
+## 🔧 Backend Architecture
+
+### Technology Stack
+- **Framework**: Go with Fiber v2
+- **API**: Custom GraphQL implementation
+- **ORM**: Ent (Facebook's entity framework)
+- **Database**: PostgreSQL with Redis caching
+- **Authentication**: JWT with bcrypt password hashing
+
+### Project Structure
+```
+backend/
+├── config/              # Configuration management
+├── database/            # Database utilities  
+├── ent/                 # Ent ORM code and schemas
+│   ├── schema/          # Entity definitions
+│   └── migrate/         # Database migrations
+├── graph/               # GraphQL implementation
+│   └── schema.graphql   # GraphQL schema
+├── handlers/            # Legacy REST handlers
+├── middleware/          # HTTP middleware
+├── services/            # Business logic
+├── utils/               # Utility functions
+├── main_graphql.go      # GraphQL server (primary)
+├── main_ent.go          # Ent test server
+└── main.go              # Legacy REST server
 ```
 
-## Troubleshooting
+### Database Schema Management
+The backend uses **Ent ORM** for type-safe database operations:
+
+```bash
+# Generate Ent code from schemas
+cd backend && go generate ./ent
+
+# Auto-migrate database (done automatically on server start)
+cd backend && go run main_graphql.go
+```
+
+### Available Servers
+1. **GraphQL Server** (recommended): `main_graphql.go`
+   - Port: 3002
+   - Features: GraphQL API, Playground, Authentication
+   - Use: `./start-graphql.sh` or `go run main_graphql.go`
+
+2. **Ent Test Server**: `main_ent.go`  
+   - Port: 3001
+   - Features: Database testing, Ent ORM validation
+   - Use: `go run main_ent.go`
+
+3. **Legacy REST Server**: `main.go`
+   - Port: 3000  
+   - Features: Original REST API (being phased out)
+   - Use: `go run main.go`
+
+## 📊 Database Setup
+
+### Ent Schema Entities
+Current entities defined in `ent/schema/`:
+
+- **User** (`user.go`): Authentication and user management
+- **BlogPost** (`blogpost.go`): Content management  
+- **BlogCategory** (`blogcategory.go`): Blog categorization
+- **Project** (`project.go`): Portfolio management
+- **Order** (`order.go`): E-commerce orders
+- **OrderItem** (`orderitem.go`): Order line items
+- **Payment** (`payment.go`): Payment processing
+- **Product** (`product.go`): Software products
+- **WordPressSite** (`wordpresssite.go`): WordPress integration
+
+### Database Commands
+```bash
+# Check database connection
+cd backend && go run main_simple.go
+
+# View database schema
+docker exec -it zplus_postgres psql -U zplus_user -d zplus_db -c "\dt"
+
+# Access database directly
+docker exec -it zplus_postgres psql -U zplus_user -d zplus_db
+```
+
+## 🔌 API Testing
+
+### GraphQL Playground
+1. Start the GraphQL server: `./start-graphql.sh`
+2. Open: `http://localhost:3002/playground`
+3. Test queries and mutations interactively
+
+### Sample API Calls
+
+**User Registration:**
+```graphql
+mutation {
+  register(input: {
+    email: "test@example.com"
+    username: "testuser"
+    password: "password123"
+    firstName: "Test"
+    lastName: "User"
+  }) {
+    token
+    user {
+      id
+      email
+      username
+      role
+    }
+    expiresAt
+  }
+}
+```
+
+**User Login:**
+```graphql
+mutation {
+  login(input: {
+    email: "test@example.com"
+    password: "password123"
+  }) {
+    token
+    user {
+      id
+      email
+      username
+    }
+  }
+}
+```
+
+**Get Current User (Authenticated):**
+```graphql
+# Add Authorization header: Bearer <token>
+query {
+  me {
+    id
+    email
+    username
+    firstName
+    lastName
+    role
+  }
+}
+```
+
+## 🛠️ Development Workflow
+
+### 1. Making Schema Changes
+```bash
+# 1. Modify entity schemas in ent/schema/
+# 2. Regenerate Ent code
+cd backend && go generate ./ent
+
+# 3. Restart server (auto-migration)
+./start-graphql.sh
+```
+
+### 2. Adding GraphQL Operations
+1. Update `graph/schema.graphql` (if using gqlgen)
+2. Implement resolvers in GraphQL handler functions
+3. Test in Playground
+
+### 3. Testing Changes
+```bash
+# Test database operations
+cd backend && go run main_ent.go
+
+# Test GraphQL API  
+cd backend && go run main_graphql.go
+
+# Run tests (if available)
+cd backend && go test ./...
+```
+
+## 🚨 Troubleshooting
 
 ### Common Issues
 
-1. **Database Connection Failed**
-   - Make sure Docker is running
-   - Check if PostgreSQL container is running: `docker ps`
-   - Verify database credentials in `.env` file
-
-2. **Frontend Can't Connect to Backend**
-   - Check if backend is running on port 3000
-   - Verify CORS settings in main.go
-   - Check Next.js proxy configuration in next.config.js
-
-3. **Build Failures**
-   - Backend: Run `go mod tidy` to update dependencies
-   - Frontend: Delete `node_modules` and run `npm install`
-
-4. **Port Already in Use**
-   - Change the PORT in backend `.env` file
-   - Update frontend proxy configuration accordingly
-
-### Reset Database
+**Database Connection Failed:**
 ```bash
-# Stop services
-docker-compose down
+# Check if database is running
+docker ps | grep postgres
 
-# Remove volumes (this will delete all data)
-docker-compose down -v
+# Restart database services
+./start-dev.sh
 
-# Start fresh
-docker-compose up -d
+# Check connection manually
+docker exec -it zplus_postgres pg_isready
 ```
 
-### View Logs
+**Port Already in Use:**
 ```bash
-# Backend logs
-docker-compose logs backend
+# Check what's using the port
+lsof -i :3002
+lsof -i :5434
 
-# Database logs
-docker-compose logs postgres
-
-# All logs
-docker-compose logs -f
+# Kill process or change port in .env
 ```
 
-## Next Steps
+**Ent Code Generation Errors:**
+```bash
+# Clean and regenerate
+cd backend
+rm -rf ent/generated
+go generate ./ent
+```
 
-After setting up the basic application:
+**GraphQL Server Won't Start:**
+```bash
+# Check for syntax errors
+cd backend
+go build main_graphql.go
 
-1. **Implement Authentication**
-   - Add JWT middleware
-   - Implement password hashing
-   - Add email verification
+# Check logs for specific errors
+go run main_graphql.go 2>&1 | grep -i error
+```
 
-2. **Complete CRUD Operations**
-   - Finish blog management
-   - Add project management
-   - Add product management
-   - Add customer management
+### Database Reset
+```bash
+# Stop all services
+docker-compose -f docker-compose.dev.yml down
 
-3. **Add Business Logic**
-   - Implement payment processing
-   - Add file upload functionality
-   - Add WordPress integration
-   - Add email notifications
+# Remove volumes (WARNING: deletes all data)
+docker-compose -f docker-compose.dev.yml down -v
 
-4. **Security Enhancements**
-   - Add rate limiting
-   - Implement proper validation
-   - Add HTTPS support
-   - Add security headers
+# Restart clean
+./start-dev.sh
+```
 
-5. **Testing**
-   - Add unit tests
-   - Add integration tests
-   - Add end-to-end tests
+### Logs and Debugging
+```bash
+# View database logs
+docker logs zplus_postgres -f
 
-6. **Deployment**
-   - Set up CI/CD pipeline
-   - Configure production environment
-   - Set up monitoring and logging
+# View Redis logs  
+docker logs zplus_redis -f
 
-## Support
+# Backend logs (built-in logging middleware)
+# Logs appear in terminal when running the server
+```
 
-For questions and support:
-1. Check the documentation in the `docs/` folder
-2. Review the API documentation
-3. Check the GitHub issues
-4. Contact the development team
+## 🌐 Frontend Setup (Future)
+
+The frontend will be added in a future phase:
+
+```bash
+# Future commands (not yet implemented)
+cd frontend
+npm install
+npm run dev
+```
+
+## 📚 Additional Resources
+
+- **Ent Documentation**: https://entgo.io/docs/getting-started
+- **Fiber Documentation**: https://docs.gofiber.io/
+- **GraphQL Specification**: https://spec.graphql.org/
+- **PostgreSQL Documentation**: https://www.postgresql.org/docs/
+
+## 🔐 Security Notes
+
+### Development Environment
+- Uses non-standard ports (5434, 6381) to avoid conflicts
+- Default passwords for development only
+- JWT secret should be changed for production
+
+### Production Considerations
+- Use environment-specific configuration
+- Implement proper HTTPS/TLS
+- Set up database connection pooling
+- Add rate limiting and input validation
+- Regular security updates for dependencies

@@ -1,0 +1,419 @@
+# GraphQL Schema for ZPlus Web
+
+# Scalar types
+scalar Time
+scalar Upload
+
+# User types
+type User {
+  id: ID!
+  email: String!
+  username: String!
+  firstName: String
+  lastName: String
+  avatar: String
+  role: UserRole!
+  isActive: Boolean!
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+# Authentication types
+type AuthPayload {
+  token: String!
+  user: User!
+  expiresAt: Time!
+}
+
+# Blog types
+type BlogPost {
+  id: ID!
+  title: String!
+  slug: String!
+  content: String!
+  excerpt: String
+  featuredImage: String
+  status: PostStatus!
+  author: User!
+  category: BlogCategory
+  tags: [String!]!
+  viewCount: Int!
+  publishedAt: Time
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+type BlogCategory {
+  id: ID!
+  name: String!
+  slug: String!
+  description: String
+  postCount: Int!
+  createdAt: Time!
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+# Project types
+type Project {
+  id: ID!
+  title: String!
+  slug: String!
+  description: String!
+  content: String
+  thumbnail: String
+  images: [String!]!
+  technologies: [String!]!
+  demoUrl: String
+  sourceUrl: String
+  status: ProjectStatus!
+  featured: Boolean!
+  author: User!
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+enum ProjectStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+# Payment & Wallet types
+type Wallet {
+  id: ID!
+  user: User!
+  balance: Float!
+  points: Int!
+  currency: String!
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+type Transaction {
+  id: ID!
+  wallet: Wallet!
+  type: TransactionType!
+  amount: Float!
+  points: Int
+  description: String!
+  reference: String
+  status: TransactionStatus!
+  createdAt: Time!
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  PURCHASE
+  REFUND
+  POINTS_EARNED
+  POINTS_SPENT
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+# WordPress Integration types
+type WordPressSite {
+  id: ID!
+  name: String!
+  url: String!
+  username: String!
+  status: WordPressStatus!
+  lastSync: Time
+  createdAt: Time!
+}
+
+enum WordPressStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+}
+
+# File Upload types
+type FileUpload {
+  id: ID!
+  filename: String!
+  originalName: String!
+  mimetype: String!
+  size: Int!
+  url: String!
+  category: String!
+  uploadedBy: User!
+  createdAt: Time!
+}
+
+# Admin Dashboard types
+type DashboardStats {
+  totalUsers: Int!
+  totalPosts: Int!
+  totalProjects: Int!
+  totalTransactions: Int!
+  monthlyRevenue: Float!
+  monthlySignups: Int!
+  activeUsers: Int!
+}
+
+type RecentActivity {
+  id: ID!
+  type: ActivityType!
+  description: String!
+  user: User
+  metadata: String
+  createdAt: Time!
+}
+
+enum ActivityType {
+  USER_REGISTERED
+  POST_PUBLISHED
+  PROJECT_CREATED
+  PAYMENT_COMPLETED
+  LOGIN_ATTEMPT
+}
+
+# Input types
+input RegisterInput {
+  email: String!
+  username: String!
+  password: String!
+  firstName: String
+  lastName: String
+}
+
+input LoginInput {
+  email: String!
+  password: String!
+}
+
+input CreatePostInput {
+  title: String!
+  content: String!
+  excerpt: String
+  categoryId: ID
+  tags: [String!]
+  status: PostStatus = DRAFT
+  featuredImage: String
+}
+
+input UpdatePostInput {
+  id: ID!
+  title: String
+  content: String
+  excerpt: String
+  categoryId: ID
+  tags: [String!]
+  status: PostStatus
+  featuredImage: String
+}
+
+input CreateProjectInput {
+  title: String!
+  description: String!
+  content: String
+  thumbnail: String
+  images: [String!]
+  technologies: [String!]!
+  demoUrl: String
+  sourceUrl: String
+  featured: Boolean = false
+}
+
+input UpdateProjectInput {
+  id: ID!
+  title: String
+  description: String
+  content: String
+  thumbnail: String
+  images: [String!]
+  technologies: [String!]
+  demoUrl: String
+  sourceUrl: String
+  featured: Boolean
+  status: ProjectStatus
+}
+
+input CreateCategoryInput {
+  name: String!
+  description: String
+}
+
+input DepositInput {
+  amount: Float!
+  method: String!
+}
+
+input WordPressSiteInput {
+  name: String!
+  url: String!
+  username: String!
+  password: String!
+}
+
+# Pagination types
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+type PostConnection {
+  edges: [PostEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PostEdge {
+  node: BlogPost!
+  cursor: String!
+}
+
+type ProjectConnection {
+  edges: [ProjectEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type ProjectEdge {
+  node: Project!
+  cursor: String!
+}
+
+type UserConnection {
+  edges: [UserEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type UserEdge {
+  node: User!
+  cursor: String!
+}
+
+# Root Query type
+type Query {
+  # Authentication
+  me: User
+
+  # Blog queries
+  posts(
+    first: Int
+    after: String
+    status: PostStatus
+    categoryId: ID
+    search: String
+  ): PostConnection!
+  
+  post(id: ID, slug: String): BlogPost
+  
+  categories: [BlogCategory!]!
+  category(id: ID, slug: String): BlogCategory
+
+  # Project queries
+  projects(
+    first: Int
+    after: String
+    featured: Boolean
+    status: ProjectStatus
+  ): ProjectConnection!
+  
+  project(id: ID, slug: String): Project
+
+  # User queries (Admin only)
+  users(
+    first: Int
+    after: String
+    role: UserRole
+    search: String
+  ): UserConnection!
+  
+  user(id: ID): User
+
+  # Wallet queries
+  wallet: Wallet
+  transactions(
+    first: Int
+    after: String
+    type: TransactionType
+  ): [Transaction!]!
+
+  # WordPress queries (Admin only)
+  wordPressSites: [WordPressSite!]!
+  wordPressSite(id: ID!): WordPressSite
+
+  # Admin queries
+  dashboardStats: DashboardStats!
+  recentActivity(limit: Int = 10): [RecentActivity!]!
+
+  # File queries
+  uploads(
+    first: Int
+    after: String
+    category: String
+  ): [FileUpload!]!
+}
+
+# Root Mutation type
+type Mutation {
+  # Authentication mutations
+  register(input: RegisterInput!): AuthPayload!
+  login(input: LoginInput!): AuthPayload!
+  logout: Boolean!
+  forgotPassword(email: String!): Boolean!
+  resetPassword(token: String!, password: String!): Boolean!
+
+  # Blog mutations
+  createPost(input: CreatePostInput!): BlogPost!
+  updatePost(input: UpdatePostInput!): BlogPost!
+  deletePost(id: ID!): Boolean!
+  publishPost(id: ID!): BlogPost!
+  
+  createCategory(input: CreateCategoryInput!): BlogCategory!
+  updateCategory(id: ID!, input: CreateCategoryInput!): BlogCategory!
+  deleteCategory(id: ID!): Boolean!
+
+  # Project mutations
+  createProject(input: CreateProjectInput!): Project!
+  updateProject(input: UpdateProjectInput!): Project!
+  deleteProject(id: ID!): Boolean!
+
+  # User mutations (Admin only)
+  updateUser(id: ID!, role: UserRole, isActive: Boolean): User!
+  deleteUser(id: ID!): Boolean!
+
+  # Wallet mutations
+  requestDeposit(input: DepositInput!): Transaction!
+  
+  # File upload mutations
+  uploadFile(file: Upload!, category: String!): FileUpload!
+  deleteFile(id: ID!): Boolean!
+
+  # WordPress mutations (Admin only)
+  createWordPressSite(input: WordPressSiteInput!): WordPressSite!
+  updateWordPressSite(id: ID!, input: WordPressSiteInput!): WordPressSite!
+  deleteWordPressSite(id: ID!): Boolean!
+  syncWordPressSite(id: ID!): Boolean!
+  publishToWordPress(siteId: ID!, postId: ID!): Boolean!
+}
+
+# Root Subscription type
+type Subscription {
+  postPublished: BlogPost!
+  projectCreated: Project!
+  transactionUpdated: Transaction!
+  activityCreated: RecentActivity!
+}

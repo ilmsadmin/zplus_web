@@ -1,34 +1,43 @@
-# API Documentation
+# GraphQL API Documentation
 
-## Overview
-This document describes the REST API endpoints for the ZPlus Web application.
+## 🚀 API Overview
 
-## Base URL
-- Development: `http://localhost:3000/api/v1`
-- Production: `https://api.zplus.com/api/v1`
+ZPlus Web provides a modern **GraphQL API** built with Go, Fiber, and Ent ORM. The API supports both administrative functions and customer-facing operations with comprehensive authentication and authorization.
 
-## Authentication
-Most endpoints require authentication using JWT tokens. Include the token in the Authorization header:
-```
+## 🔗 Endpoints
+
+### Primary Endpoints
+- **GraphQL API**: `http://localhost:3002/graphql`
+- **GraphQL Playground**: `http://localhost:3002/playground`
+- **Health Check**: `http://localhost:3002/health`
+- **API Info**: `http://localhost:3002/`
+
+### Development vs Production
+- **Development**: Port 3002 (configurable via PORT env var)
+- **Production**: Port 8080 (default) or via environment configuration
+
+## 🔐 Authentication
+
+### JWT Authentication
+The API uses JSON Web Tokens (JWT) for stateless authentication.
+
+**Authentication Header:**
+```http
 Authorization: Bearer <jwt_token>
 ```
 
-## Response Format
-All API responses follow this format:
+**Token Structure:**
 ```json
 {
-  "success": true,
-  "data": {},
-  "message": "Success message",
-  "error": null
+  "user_id": 123,
+  "email": "user@example.com",
+  "role": "user",
+  "username": "johndoe",
+  "exp": 1640995200,
+  "iat": 1640908800,
+  "iss": "zplus-web"
 }
 ```
-
-Error responses:
-```json
-{
-  "success": false,
-  "data": null,
   "message": "Error message",
   "error": {
     "code": "ERROR_CODE",

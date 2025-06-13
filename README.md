@@ -1,72 +1,86 @@
 # ZPlus Web
 
-Full-stack web application for ZPlus company featuring a Golang backend with Fiber framework and Next.js frontend. This application serves as a comprehensive platform for showcasing company services, managing projects, selling software products, and handling customer relationships.
+Full-stack web application for ZPlus company featuring a modern Golang backend with GraphQL API, Ent ORM, and Next.js frontend. This application serves as a comprehensive platform for showcasing company services, managing projects, selling software products, and handling customer relationships.
 
 ## 🏗️ Architecture Overview
 
 ZPlus Web is designed as a modern full-stack application with the following key features:
 
 ### Admin Panel Features
-- **Authentication & Authorization**: Secure admin login with role-based access
-- **Blog Management**: Create, edit, and publish blog posts and company news
+- **Authentication & Authorization**: Secure admin login with JWT-based role access
+- **Blog Management**: Create, edit, and publish blog posts with rich content
 - **Project Showcase**: Manage and display company projects and portfolio
-- **Software Marketplace**: Sell and manage software products with file downloads
-- **Customer Management**: Handle user registrations, wallets, and loyalty points
+- **Software Marketplace**: Sell and manage software products with secure downloads
+- **User Management**: Handle user accounts, wallets, and loyalty points system
 - **Content Sync**: Integration with WordPress/WooCommerce sites
 - **Dashboard Analytics**: Real-time statistics and activity monitoring
 
 ### Customer-Facing Features
 - **Product Browsing**: Browse and purchase software products
-- **Blog Reading**: Access company blog and news
-- **Project Portfolio**: View company projects and case studies
+- **Blog Reading**: Access company blog and news with search functionality
+- **Project Portfolio**: View detailed company projects and case studies
 - **User Accounts**: Registration, profile management, and purchase history
-- **Digital Wallet**: Top-up balance and manage payments
-- **Download Center**: Access purchased software with secure downloads
+- **Digital Wallet**: Top-up balance and manage secure payments
+- **Download Center**: Access purchased software with secure download links
 
 ## 🚀 Technology Stack
 
 ### Backend
-- **Framework**: Golang with Fiber (Express-like framework)
-- **Database**: PostgreSQL with Redis caching
+- **Framework**: Golang with Fiber v2 (High-performance web framework)
+- **API**: GraphQL with custom resolvers for flexible data fetching
+- **ORM**: Ent ORM with code generation and type safety
+- **Database**: PostgreSQL 15+ with Redis for caching and sessions
 - **Authentication**: JWT tokens with bcrypt password hashing
-- **API**: RESTful API with comprehensive endpoint coverage
+- **File Storage**: Local file system with upload management
 
 ### Frontend
 - **Framework**: Next.js 15 with App Router
-- **Language**: TypeScript for type safety
+- **Language**: TypeScript for full type safety
 - **Rendering**: Server-side rendering (SSR) and static generation
 - **Styling**: CSS Modules with responsive design
+- **State Management**: React hooks with GraphQL client integration
 
 ### Infrastructure
-- **Containerization**: Docker and Docker Compose
+- **Containerization**: Docker and Docker Compose for development
 - **Development**: Hot reload for both backend and frontend
-- **Database**: Automated migrations and seeding
+- **Database**: Automated migrations with Ent schema management
+- **Monitoring**: Health checks and request logging
 
 ## 📁 Project Structure
 
 ```
 zplus_web/
 ├── docs/                    # 📚 Comprehensive documentation
-│   ├── database-schema.md   # Database design and relationships
-│   ├── api-documentation.md # Complete API reference
+│   ├── database-schema.md   # Database design and Ent schemas
+│   ├── api-documentation.md # GraphQL API reference
 │   ├── system-architecture.md # Architecture and design decisions
 │   └── setup-guide.md       # Detailed setup instructions
 ├── backend/                 # 🔧 Go backend application
 │   ├── config/             # Configuration management
 │   ├── database/           # Database connection and utilities
-│   ├── handlers/           # HTTP request handlers by module
+│   ├── ent/                # Ent ORM generated code and schemas
+│   │   ├── schema/         # Entity schemas (User, BlogPost, Project, etc.)
+│   │   ├── migrate/        # Database migration files
+│   │   └── *.go            # Generated ORM code
+│   ├── graph/              # GraphQL implementation
+│   │   ├── schema.graphql  # GraphQL schema definition
+│   │   └── resolvers/      # GraphQL resolvers
+│   ├── handlers/           # HTTP request handlers (legacy REST)
 │   │   ├── auth/           # Authentication endpoints
 │   │   ├── admin/          # Admin panel endpoints
 │   │   ├── blog/           # Blog management
-│   │   ├── projects/       # Project management
-│   │   ├── products/       # Product/marketplace management
-│   │   ├── customers/      # Customer management
-│   │   └── orders/         # Order processing
-│   ├── models/             # Data models and request/response types
-│   ├── middleware/         # HTTP middleware (auth, CORS, etc.)
+│   │   ├── project/        # Project management
+│   │   ├── payment/        # Payment processing
+│   │   ├── upload/         # File upload handling
+│   │   └── wordpress/      # WordPress integration
+│   ├── models/             # Legacy data models (being replaced by Ent)
+│   ├── middleware/         # HTTP middleware (auth, CORS, logging)
 │   ├── services/           # Business logic layer
-│   ├── utils/              # Utility functions
-│   └── main.go             # Application entry point
+│   ├── utils/              # Utility functions (JWT, encryption, etc.)
+│   ├── uploads/            # File storage directory
+│   ├── main_graphql.go     # GraphQL server entry point
+│   ├── main_ent.go         # Ent ORM test server
+│   └── main.go             # Original REST server
 ├── frontend/               # 🖥️ Next.js frontend application
 │   ├── src/
 │   │   ├── app/
@@ -104,6 +118,88 @@ zplus_web/
 - [Git](https://git-scm.com/)
 
 ### 1. Clone and Setup
+```bash
+git clone <repository-url>
+cd zplus_web
+chmod +x *.sh
+```
+
+### 2. Start Development Environment
+```bash
+# Start PostgreSQL and Redis services
+./start-dev.sh
+
+# Start GraphQL API server
+./start-graphql.sh
+```
+
+### 3. Test the API
+```bash
+# Check API health
+curl http://localhost:3002/health
+
+# Open GraphQL Playground
+open http://localhost:3002/playground
+```
+
+## 🎯 Current Implementation Status
+
+### ✅ Completed Features
+- **Database Architecture**: PostgreSQL with Ent ORM integration
+- **GraphQL API**: Custom GraphQL server with authentication
+- **User Management**: Registration, login, JWT authentication
+- **Database Schemas**: Complete entity definitions (User, BlogPost, Project, etc.)
+- **Development Environment**: Docker setup with custom ports
+- **API Documentation**: Comprehensive GraphQL documentation
+- **Health Monitoring**: API health checks and logging
+
+### 🔄 In Progress
+- **Frontend Development**: Next.js frontend implementation
+- **Blog Management**: CRUD operations for blog content
+- **Project Portfolio**: Company project showcase system
+- **File Upload System**: Secure file management
+
+### 📋 Planned Features
+- **E-commerce**: Product catalog and order management
+- **Payment Integration**: Digital wallet and payment processing
+- **WordPress Sync**: Content synchronization with WordPress sites
+- **Admin Dashboard**: Comprehensive admin panel
+- **Real-time Features**: GraphQL subscriptions and live updates
+
+## 🚀 Technology Highlights
+
+### Modern Backend Stack
+- **GraphQL API**: Flexible, type-safe API with interactive playground
+- **Ent ORM**: Facebook's entity framework with automatic code generation
+- **Fiber Framework**: High-performance Go web framework
+- **PostgreSQL 15**: Robust relational database with advanced features
+- **Redis**: High-performance caching and session management
+
+### Development Features
+- **Hot Reload**: Automatic server restart during development
+- **Type Safety**: End-to-end type safety with Go and Ent
+- **Auto Migration**: Automatic database schema management
+- **Docker Integration**: Containerized development environment
+- **GraphQL Playground**: Interactive API testing interface
+
+## 🔧 Available Servers
+
+The backend includes multiple server implementations:
+
+1. **GraphQL Server** (Primary) - `main_graphql.go`
+   - **Port**: 3002
+   - **Features**: GraphQL API, Playground, Authentication
+   - **Start**: `./start-graphql.sh`
+
+2. **Ent Test Server** - `main_ent.go`
+   - **Port**: 3001
+   - **Features**: Database testing, Ent ORM validation
+   - **Start**: `cd backend && go run main_ent.go`
+
+3. **Legacy REST Server** - `main.go`
+   - **Port**: 3000
+   - **Features**: Original REST API (being phased out)
+   - **Start**: `cd backend && go run main.go`
 ```bash
 git clone <repository-url>
 cd zplus_web

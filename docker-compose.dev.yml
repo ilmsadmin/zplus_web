@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: zplus_postgres_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: zplus_web
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - zplus_dev_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: zplus_redis_dev
+    restart: unless-stopped
+    ports:
+      - "6381:6379"
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - zplus_dev_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_dev_data:
+  redis_dev_data:
+
+networks:
+  zplus_dev_network:
+    driver: bridge

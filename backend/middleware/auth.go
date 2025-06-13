@@ -3,10 +3,21 @@ package middleware
 import (
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
 	"zplus_web/backend/models"
 	"zplus_web/backend/utils"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/logger"
 )
+
+// Logger middleware for request logging
+func Logger() fiber.Handler {
+	return logger.New(logger.Config{
+		Format:     "[${time}] ${status} - ${method} ${path} - ${ip} - ${latency}\n",
+		TimeFormat: "2006-01-02 15:04:05",
+		TimeZone:   "Local",
+	})
+}
 
 // AuthRequired middleware to check for valid JWT token
 func AuthRequired() fiber.Handler {

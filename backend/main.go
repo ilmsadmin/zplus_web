@@ -1,25 +1,21 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
-	
+	_ "github.com/lib/pq"
+	"golang.org/x/crypto/bcrypt"
+
 	"zplus_web/backend/config"
-	"zplus_web/backend/database"
-	"zplus_web/backend/handlers/auth"
-	"zplus_web/backend/handlers/admin"
-	"zplus_web/backend/handlers/blog"
-	"zplus_web/backend/handlers/project"
-	"zplus_web/backend/handlers/upload"
-	"zplus_web/backend/handlers/payment"
-	"zplus_web/backend/handlers/wordpress"
-	"zplus_web/backend/middleware"
-	"zplus_web/backend/services"
+	"zplus_web/backend/ent"
 )
 
 func main() {
@@ -31,159 +27,440 @@ func main() {
 	// Load configuration
 	cfg := config.Load()
 
-	// Initialize database
-	db, err := database.NewDatabase(cfg)
+	// Initialize Ent client
+	client, err := ent.Open("postgres", fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName))
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
-	defer db.Close()
+	defer client.Close()
 
-	// Initialize services
-	userService := services.NewUserService(db.PostgreSQL)
-	blogService := services.NewBlogService(db.PostgreSQL)
-	projectService := services.NewProjectService(db.PostgreSQL)
-	paymentService := services.NewPaymentService(db.PostgreSQL)
-	wordpressService := services.NewWordPressService(db.PostgreSQL)
+	// Run migrations
+	if err := client.Schema.Create(context.Background()); err != nil {
+		log.Fatalf("Failed to create schema: %v", err)
+	}
+
+	log.Println("Database connected and schema created successfully")
 
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
-		AppName: "ZPlus Web API v1.0.0",
+		AppName: "ZPlus Web GraphQL API v1.0.0",
 	})
 
 	// Middleware
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "*",
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
-		AllowMethods: "GET, POST, PUT, DELETE, OPTIONS",
+		AllowMethods: "GET,POST,HEAD,PUT,DELETE,PATCH,OPTIONS",
+		AllowHeaders: "*",
 	}))
 
-	// Routes
-	app.Get("/", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"message": "Welcome to ZPlus Web API",
-			"status":  "running",
-			"version": "v1.0.0",
-		})
-	})
-
+	// Health check endpoint
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
-			"status": "healthy",
-			"service": "zplus-web-api",
+			"status":   "ok",
+			"database": "connected",
+			"version":  "1.0.0",
 		})
 	})
 
-	// API routes group
-	api := app.Group("/api/v1")
-	
-	api.Get("/ping", func(c *fiber.Ctx) error {
+	// GraphQL endpoint
+	app.Post("/graphql", func(c *fiber.Ctx) error {
+		var request struct {
+			Query     string                 `json:"query"`
+			Variables map[string]interface{} `json:"variables"`
+		}
+
+		if err := c.BodyParser(&request); err != nil {
+			return c.Status(400).JSON(fiber.Map{
+				"errors": []fiber.Map{
+					{"message": "Invalid request body"},
+				},
+			})
+		}
+
+		// Handle users query
+		if strings.Contains(request.Query, "users") && strings.Contains(request.Query, "query") {
+			users, err := client.User.Query().All(c.Context())
+			if err != nil {
+				return c.Status(500).JSON(fiber.Map{
+					"errors": []fiber.Map{
+						{"message": "Failed to fetch users"},
+					},
+				})
+			}
+
+			var userList []fiber.Map
+			for _, user := range users {
+				userList = append(userList, fiber.Map{
+					"id":       user.ID.String(),
+					"email":    user.Email,
+					"username": user.Username,
+					"role":     user.Role,
+				})
+			}
+
+			return c.JSON(fiber.Map{
+				"data": fiber.Map{
+					"users": userList,
+				},
+			})
+		}
+
+		// Handle me query
+		if strings.Contains(request.Query, "me") && strings.Contains(request.Query, "query") {
+			return c.JSON(fiber.Map{
+				"data": fiber.Map{
+					"me": fiber.Map{
+						"id":       "550e8400-e29b-41d4-a716-446655440000",
+						"email":    "admin@example.com",
+						"username": "admin",
+						"role":     "admin",
+					},
+				},
+			})
+		}
+
+		// Handle create user mutation
+		if strings.Contains(request.Query, "createUser") && strings.Contains(request.Query, "mutation") {
+			email, emailOk := request.Variables["email"].(string)
+			username, usernameOk := request.Variables["username"].(string)
+			password, passwordOk := request.Variables["password"].(string)
+
+			if !emailOk || !usernameOk || !passwordOk {
+				return c.Status(400).JSON(fiber.Map{
+					"errors": []fiber.Map{
+						{"message": "Missing required variables: email, username, password"},
+					},
+				})
+			}
+
+			// Hash password
+			hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+			if err != nil {
+				return c.Status(500).JSON(fiber.Map{
+					"errors": []fiber.Map{
+						{"message": "Failed to hash password"},
+					},
+				})
+			}
+
+			user, err := client.User.Create().
+				SetEmail(email).
+				SetUsername(username).
+				SetPasswordHash(string(hashedPassword)).
+				SetRole("user").
+				SetEmailVerified(false).
+				SetPoints(0).
+				SetWalletBalance(0.0).
+				Save(c.Context())
+
+			if err != nil {
+				return c.Status(500).JSON(fiber.Map{
+					"errors": []fiber.Map{
+						{"message": "Failed to create user: " + err.Error()},
+					},
+				})
+			}
+
+			return c.JSON(fiber.Map{
+				"data": fiber.Map{
+					"createUser": fiber.Map{
+						"id":       user.ID.String(),
+						"email":    user.Email,
+						"username": user.Username,
+						"role":     user.Role,
+					},
+				},
+			})
+		}
+
+		return c.Status(400).JSON(fiber.Map{
+			"errors": []fiber.Map{
+				{"message": "Unsupported query: " + request.Query},
+			},
+		})
+	})
+
+	// API documentation
+	app.Get("/", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
-			"message": "pong",
+			"message": "ZPlus Web GraphQL API",
+			"version": "1.0.0",
+			"endpoints": fiber.Map{
+				"graphql":    "/graphql",
+				"playground": "/playground",
+				"health":     "/health",
+			},
 		})
 	})
 
-	// Initialize handlers
-	authHandler := auth.NewAuthHandler(userService)
-	adminHandler := admin.NewAdminHandler(userService)
-	blogHandler := blog.NewBlogHandler(blogService)
-	projectHandler := project.NewProjectHandler(projectService)
-	uploadHandler := upload.NewUploadHandler()
-	paymentHandler := payment.NewPaymentHandler(paymentService)
-	wordpressHandler := wordpress.NewWordPressHandler(wordpressService, blogService)
+	// GraphQL playground
+	app.Get("/playground", func(c *fiber.Ctx) error {
+		html := `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>GraphQL Playground - ZPlus Web</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Open Sans', sans-serif;
+      background-color: #1a1a1a;
+      color: #fff;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      border-bottom: 1px solid #444;
+      padding-bottom: 20px;
+    }
+    .query-box {
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .query-title {
+      color: #61dafb;
+      margin-bottom: 15px;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    pre {
+      background: #1e1e1e;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+      border: 1px solid #444;
+      margin: 10px 0;
+    }
+    code {
+      color: #9cdcfe;
+    }
+    .button {
+      background: #61dafb;
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 8px;
+      font-weight: bold;
+      transition: background-color 0.3s;
+    }
+    .button:hover {
+      background: #4fa8c5;
+    }
+    .button.success {
+      background: #28a745;
+      color: white;
+    }
+    .button.danger {
+      background: #dc3545;
+      color: white;
+    }
+    #result {
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 15px;
+      margin-top: 15px;
+      min-height: 100px;
+    }
+    .endpoint-info {
+      background: #333;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px 0;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .status.online {
+      background: #28a745;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🚀 ZPlus Web GraphQL API</h1>
+      <p>Interactive GraphQL Playground</p>
+      <div class="endpoint-info">
+        <strong>GraphQL Endpoint:</strong> <code>POST /graphql</code>
+        <span class="status online">ONLINE</span>
+      </div>
+    </div>
 
-	// Authentication routes
-	authGroup := api.Group("/auth")
-	authGroup.Post("/register", authHandler.Register)
-	authGroup.Post("/login", authHandler.Login)
-	authGroup.Post("/logout", authHandler.Logout)
-	authGroup.Post("/forgot-password", authHandler.ForgotPassword)
-	authGroup.Post("/reset-password", authHandler.ResetPassword)
+    <div class="query-box">
+      <div class="query-title">📋 Available Queries</div>
+      <p><strong>Get all users:</strong></p>
+      <pre><code>query {
+  users {
+    id
+    email
+    username
+    role
+  }
+}</code></pre>
+      
+      <p><strong>Get current user (mock):</strong></p>
+      <pre><code>query {
+  me {
+    id
+    email
+    username
+    role
+  }
+}</code></pre>
+    </div>
 
-	// Public blog routes
-	blogGroup := api.Group("/blog")
-	blogGroup.Get("/posts", blogHandler.GetPosts)
-	blogGroup.Get("/posts/:slug", blogHandler.GetPost)
-	blogGroup.Get("/categories", blogHandler.GetCategories)
+    <div class="query-box">
+      <div class="query-title">✏️ Available Mutations</div>
+      <p><strong>Create a new user:</strong></p>
+      <pre><code>mutation createUser($email: String!, $username: String!, $password: String!) {
+  createUser(email: $email, username: $username, password: $password) {
+    id
+    email
+    username
+    role
+  }
+}</code></pre>
+      <p><strong>Variables:</strong></p>
+      <pre><code>{
+  "email": "user@example.com",
+  "username": "newuser",
+  "password": "password123"
+}</code></pre>
+    </div>
 
-	// Public project routes
-	projectGroup := api.Group("/projects")
-	projectGroup.Get("/", projectHandler.GetProjects)
-	projectGroup.Get("/:slug", projectHandler.GetProject)
+    <div class="query-box">
+      <div class="query-title">🔧 Test Operations</div>
+      
+      <button class="button" onclick="testUsers()">📊 Query Users</button>
+      <button class="button" onclick="testMe()">👤 Query Me</button>
+      <button class="button success" onclick="testCreateUser()">➕ Create User</button>
+      <button class="button danger" onclick="clearResult()">🗑️ Clear</button>
+      
+      <div id="result">
+        <p><em>Click a button above to test GraphQL operations...</em></p>
+      </div>
+    </div>
 
-	// Admin routes
-	adminAuthGroup := api.Group("/admin/auth")
-	adminAuthGroup.Post("/login", adminHandler.Login)
+    <div class="query-box">
+      <div class="query-title">📚 Usage Examples</div>
+      <p><strong>Using curl:</strong></p>
+      <pre><code>curl -X POST http://localhost:3002/graphql \
+  -H "Content-Type: application/json" \
+  -d '{"query": "query { users { id email username } }"}'</code></pre>
+      
+      <p><strong>Using JavaScript fetch:</strong></p>
+      <pre><code>fetch('/graphql', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    query: 'query { users { id email username } }'
+  })
+}).then(res => res.json())</code></pre>
+    </div>
+  </div>
 
-	adminDashboardGroup := api.Group("/admin/dashboard")
-	adminDashboardGroup.Use(middleware.AuthRequired(), middleware.AdminRequired())
-	adminDashboardGroup.Get("/stats", adminHandler.GetDashboardStats)
-	adminDashboardGroup.Get("/recent-activity", adminHandler.GetRecentActivity)
+  <script>
+    async function makeGraphQLRequest(query, variables = {}) {
+      try {
+        const startTime = Date.now();
+        const response = await fetch('/graphql', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: query,
+            variables: variables
+          })
+        });
+        const data = await response.json();
+        const endTime = Date.now();
+        const duration = endTime - startTime;
+        
+        document.getElementById('result').innerHTML = 
+          '<div style="color: #61dafb; font-size: 14px; margin-bottom: 10px;">Response (' + duration + 'ms):</div>' +
+          '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+      } catch (error) {
+        document.getElementById('result').innerHTML = 
+          '<div style="color: #dc3545; font-size: 14px; margin-bottom: 10px;">Error:</div>' +
+          '<pre style="color: #ff6b6b;">' + error.message + '</pre>';
+      }
+    }
 
-	adminBlogGroup := api.Group("/admin/blog")
-	adminBlogGroup.Use(middleware.AuthRequired(), middleware.AdminRequired())
-	adminBlogGroup.Get("/posts", blogHandler.AdminGetPosts)
-	adminBlogGroup.Post("/posts", blogHandler.AdminCreatePost)
-	adminBlogGroup.Put("/posts/:id", blogHandler.AdminUpdatePost)
-	adminBlogGroup.Delete("/posts/:id", blogHandler.AdminDeletePost)
-	adminBlogGroup.Post("/categories", blogHandler.AdminCreateCategory)
+    function testUsers() {
+      makeGraphQLRequest('query { users { id email username role } }');
+    }
 
-	adminProjectGroup := api.Group("/admin/projects")
-	adminProjectGroup.Use(middleware.AuthRequired(), middleware.AdminRequired())
-	adminProjectGroup.Get("/", projectHandler.AdminGetProjects)
-	adminProjectGroup.Post("/", projectHandler.AdminCreateProject)
-	adminProjectGroup.Put("/:id", projectHandler.AdminUpdateProject)
-	adminProjectGroup.Delete("/:id", projectHandler.AdminDeleteProject)
+    function testMe() {
+      makeGraphQLRequest('query { me { id email username role } }');
+    }
 
-	// File upload routes
-	uploadGroup := api.Group("/upload")
-	uploadGroup.Use(middleware.AuthRequired())
-	uploadGroup.Post("/image", uploadHandler.UploadImage)
-	uploadGroup.Post("/file", uploadHandler.UploadFile)
-	uploadGroup.Post("/multiple", uploadHandler.UploadMultiple)
+    function testCreateUser() {
+      const randomNum = Math.floor(Math.random() * 1000);
+      makeGraphQLRequest(
+        ` + "`" + `mutation createUser($email: String!, $username: String!, $password: String!) {
+          createUser(email: $email, username: $username, password: $password) {
+            id
+            email
+            username
+            role
+          }
+        }` + "`" + `,
+        {
+          email: ` + "`user${randomNum}@example.com`" + `,
+          username: ` + "`user${randomNum}`" + `,
+          password: "password123"
+        }
+      );
+    }
 
-	// Static file serving (no auth required for public files)
-	api.Get("/uploads/:category/:filename", uploadHandler.ServeFile)
+    function clearResult() {
+      document.getElementById('result').innerHTML = '<p><em>Results cleared...</em></p>';
+    }
 
-	// Wallet and payment routes
-	walletGroup := api.Group("/wallet")
-	walletGroup.Use(middleware.AuthRequired())
-	walletGroup.Get("/", paymentHandler.GetWallet)
-	walletGroup.Get("/transactions", paymentHandler.GetWalletTransactions)
-	walletGroup.Post("/deposit", paymentHandler.RequestDeposit)
-
-	pointsGroup := api.Group("/points")
-	pointsGroup.Use(middleware.AuthRequired())
-	pointsGroup.Get("/", paymentHandler.GetPoints)
-
-	// Payment callback (webhook) - no auth required
-	api.Post("/wallet/deposit/callback", paymentHandler.HandleDepositCallback)
-
-	// WordPress integration routes
-	adminWordPressGroup := api.Group("/admin/wordpress")
-	adminWordPressGroup.Use(middleware.AuthRequired(), middleware.AdminRequired())
-	adminWordPressGroup.Get("/sites", wordpressHandler.GetSites)
-	adminWordPressGroup.Post("/sites", wordpressHandler.CreateSite)
-	adminWordPressGroup.Post("/sites/:id/test", wordpressHandler.TestConnection)
-	adminWordPressGroup.Post("/sites/:id/sync", wordpressHandler.SyncFromWordPress)
-	adminWordPressGroup.Post("/sites/:id/publish/:post_id", wordpressHandler.PublishToWordPress)
-	adminWordPressGroup.Get("/sites/:id/logs", wordpressHandler.GetSyncLogs)
-
-	// WordPress webhook (no auth required for external webhook)
-	api.Post("/admin/wordpress/webhook", wordpressHandler.HandleWebhook)
-
-	// TODO: Add more route groups for:
-	// - Products (/products, /admin/products)
-	// - Orders (/orders)
-	// - Customers (/admin/customers)
+    // Test connection on page load
+    window.onload = function() {
+      fetch('/health').then(res => res.json()).then(data => {
+        console.log('API Status:', data);
+      });
+    };
+  </script>
+</body>
+</html>`
+		c.Set("Content-Type", "text/html")
+		return c.SendString(html)
+	})
 
 	// Get port from environment or use default
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "3000"
+		port = "3003"
 	}
 
 	log.Printf("Server starting on port %s", port)
-	log.Printf("API Documentation: http://localhost:%s/api/v1", port)
-	log.Fatal(app.Listen(":" + port))
+	log.Printf("GraphQL API: http://localhost:%s/", port)
+	log.Printf("Health check: http://localhost:%s/health", port)
+
+	if err := app.Listen(":" + port); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+	}
 }

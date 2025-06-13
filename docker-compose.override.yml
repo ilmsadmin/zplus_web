@@ -1,0 +1,31 @@
+# Docker Compose override for development
+# This file is automatically loaded when running docker-compose up
+version: '3.8'
+
+services:
+  backend:
+    # Enable hot reload for development
+    volumes:
+      - ./backend:/app
+      - /app/main  # Exclude binary from volume mount
+    environment:
+      - ENV=development
+      - DEBUG=true
+    # Override command for development with live reload
+    # Uncomment the lines below if you want to use air for hot reload
+    # command: air -c .air.toml
+    ports:
+      - "3000:3000"
+      - "2345:2345"  # For debugging with delve
+
+  postgres:
+    # Enable logging for development
+    command: postgres -c log_statement=all -c log_destination=stderr
+    environment:
+      - POSTGRES_DB=zplus_web
+      - POSTGRES_USER=postgres  
+      - POSTGRES_PASSWORD=password
+
+  redis:
+    # Enable Redis logging for development
+    command: redis-server --loglevel verbose

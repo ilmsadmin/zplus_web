@@ -30,8 +30,25 @@ func CheckPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
-// GenerateJWT generates a JWT token for a user
-func GenerateJWT(userID int, email, role, username string) (string, error) {
+// GenerateJWT generates a JWT token for a user (simple version)
+func GenerateJWT(userID int) (string, time.Time, error) {
+	expirationTime := time.Now().Add(24 * time.Hour) // 24 hours expiration
+	claims := &Claims{
+		UserID: userID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Issuer:    "zplus-web",
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(jwtSecret)
+	return tokenString, expirationTime, err
+}
+
+// GenerateJWTWithDetails generates a JWT token for a user with full details
+func GenerateJWTWithDetails(userID int, email, role, username string) (string, error) {
 	expirationTime := time.Now().Add(24 * time.Hour) // 24 hours expiration
 	claims := &Claims{
 		UserID:   userID,

@@ -1,7 +1,23 @@
-# Database Schema Design
+# Database Schema Documentation
 
-## Overview
-This document describes the database schema for the ZPlus Web application, including all tables needed for the admin panel and customer-facing features.
+## 🗄️ Database Design Overview
+
+ZPlus Web uses **PostgreSQL** as the primary database with **Ent ORM** for type-safe database operations and automatic code generation. The database is designed with a comprehensive schema supporting user management, content management, e-commerce functionality, and WordPress integration.
+
+## 🏗️ Architecture
+
+### ORM Technology
+- **Ent ORM**: Facebook's entity framework for Go
+- **Code Generation**: Automatic generation of type-safe CRUD operations
+- **Schema-First**: Database schema defined in Go structs
+- **Migration Management**: Automatic migration generation and execution
+
+### Database Configuration
+- **Primary Database**: PostgreSQL 15+
+- **Caching Layer**: Redis for session management and caching
+- **Connection Pooling**: Optimized connection management
+- **Development Port**: 5434 (to avoid conflicts)
+- **Production Port**: 5432
 
 ## Tables
 
