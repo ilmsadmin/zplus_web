@@ -26,17 +26,33 @@ export default function LoginPage() {
     setError('')
 
     try {
-      // TODO: Implement actual login API call
-      console.log('Login attempt:', formData)
-      
-      // Mock login success - replace with real API call
-      setTimeout(() => {
-        setLoading(false)
-        router.push('/admin/dashboard')
-      }, 1000)
+      const response = await fetch('/api/v1/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        // Store the token
+        localStorage.setItem('admin_token', data.data.token)
+        
+        // Check if user has admin role
+        if (data.data.user.role === 'admin') {
+          router.push('/admin/dashboard')
+        } else {
+          router.push('/') // Regular user goes to homepage
+        }
+      } else {
+        setError(data.message || 'Đăng nhập thất bại. Vui lòng thử lại.')
+      }
     } catch (err) {
-      setLoading(false)
       setError('Đăng nhập thất bại. Vui lòng thử lại.')
+    } finally {
+      setLoading(false)
     }
   }
 
