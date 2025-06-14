@@ -2,14 +2,34 @@
 
 import type { Metadata } from 'next'
 import './admin.css'
+import AuthGuard from '../../components/admin/AuthGuard'
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  async function handleLogout() {
+    try {
+      const token = localStorage.getItem('admin_token')
+      if (token) {
+        await fetch('/api/v1/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+      }
+      localStorage.removeItem('admin_token')
+      window.location.href = '/login'
+    } catch (error) {
+      console.error('Logout error:', error)
+      localStorage.removeItem('admin_token')
+      window.location.href = '/login'
+    }
+  }
   return (
-    <>
+    <AuthGuard>
       <div style={{
         margin: 0,
         padding: 0,
@@ -109,7 +129,7 @@ export default function AdminLayout({
                 {[
                   { href: '/admin/blog', icon: 'fas fa-blog', text: 'Blog Posts' },
                   { href: '/admin/projects', icon: 'fas fa-project-diagram', text: 'Projects' },
-                  { href: '/admin/content', icon: 'fas fa-file-alt', text: 'Content Manager' }
+                  { href: '/admin/reports', icon: 'fas fa-chart-bar', text: 'Reports' }
                 ].map((item, index) => (
                   <a key={index} href={item.href} style={{
                     display: 'block',
@@ -150,7 +170,7 @@ export default function AdminLayout({
                 {[
                   { href: '/admin/products', icon: 'fas fa-box', text: 'Products' },
                   { href: '/admin/orders', icon: 'fas fa-shopping-cart', text: 'Orders' },
-                  { href: '/admin/customers', icon: 'fas fa-users', text: 'Customers' }
+                  { href: '/admin/files', icon: 'fas fa-folder', text: 'File Manager' }
                 ].map((item, index) => (
                   <a key={index} href={item.href} style={{
                     display: 'block',
@@ -188,17 +208,20 @@ export default function AdminLayout({
                 }}>
                   SYSTEM
                 </h3>
-                {[
-                  { href: '/admin/wordpress', icon: 'fab fa-wordpress', text: 'WordPress Sync' },
-                  { href: '/admin/settings', icon: 'fas fa-cog', text: 'Settings' }
-                ].map((item, index) => (
-                  <a key={index} href={item.href} style={{
+                <button
+                  onClick={handleLogout}
+                  style={{
                     display: 'block',
+                    width: '100%',
+                    background: 'transparent',
+                    border: 'none',
                     color: 'white',
                     textDecoration: 'none',
                     padding: '12px 20px',
                     transition: 'all 0.3s ease',
-                    borderLeft: '3px solid transparent'
+                    borderLeft: '3px solid transparent',
+                    cursor: 'pointer',
+                    textAlign: 'left'
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.background = 'rgba(255,255,255,0.1)'
@@ -209,11 +232,11 @@ export default function AdminLayout({
                     e.currentTarget.style.background = 'transparent'
                     e.currentTarget.style.borderLeftColor = 'transparent'
                     e.currentTarget.style.paddingLeft = '20px'
-                  }}>
-                    <i className={item.icon} style={{ width: '20px', marginRight: '12px', textAlign: 'center' }}></i>
-                    {item.text}
-                  </a>
-                ))}
+                  }}
+                >
+                  <i className="fas fa-sign-out-alt" style={{ width: '20px', marginRight: '12px', textAlign: 'center' }}></i>
+                  Logout
+                </button>
               </div>
             </div>
           </nav>
@@ -229,6 +252,6 @@ export default function AdminLayout({
           </main>
         </div>
       </div>
-    </>
+    </AuthGuard>
   )
 }
