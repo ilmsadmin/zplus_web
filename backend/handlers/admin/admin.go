@@ -72,7 +72,7 @@ func (h *AdminHandler) Login(c *fiber.Ctx) error {
 	}
 
 	// Generate JWT token
-	token, err := utils.GenerateJWT(user.ID, user.Email, user.Role, user.Username)
+	token, err := utils.GenerateJWTWithDetails(user.ID, user.Email, user.Role, user.Username)
 	if err != nil {
 		return c.Status(500).JSON(models.ApiResponse{
 			Success: false,
@@ -152,5 +152,279 @@ func (h *AdminHandler) GetRecentActivity(c *fiber.Ctx) error {
 		Success: true,
 		Message: "Recent activity retrieved successfully",
 		Data:    activities,
+	})
+}
+
+// GET /admin/users - Get all users with pagination
+func (h *AdminHandler) GetUsers(c *fiber.Ctx) error {
+	// TODO: Implement pagination and filtering
+	users, err := h.userService.GetAllUsers()
+	if err != nil {
+		return c.Status(500).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Failed to retrieve users",
+			Error: &models.ApiError{
+				Code:    "INTERNAL_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
+
+	return c.JSON(models.ApiResponse{
+		Success: true,
+		Message: "Users retrieved successfully",
+		Data:    users,
+	})
+}
+
+// GET /admin/users/:id - Get user by ID
+func (h *AdminHandler) GetUser(c *fiber.Ctx) error {
+	userID, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(400).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Invalid user ID",
+			Error: &models.ApiError{
+				Code:    "VALIDATION_ERROR",
+				Details: "User ID must be a valid integer",
+			},
+		})
+	}
+
+	user, err := h.userService.GetUserByID(userID)
+	if err != nil {
+		return c.Status(404).JSON(models.ApiResponse{
+			Success: false,
+			Message: "User not found",
+			Error: &models.ApiError{
+				Code:    "NOT_FOUND",
+				Details: err.Error(),
+			},
+		})
+	}
+
+	return c.JSON(models.ApiResponse{
+		Success: true,
+		Message: "User retrieved successfully",
+		Data:    user,
+	})
+}
+
+// POST /admin/users - Create new user
+func (h *AdminHandler) CreateUser(c *fiber.Ctx) error {
+	var req models.RegisterRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Invalid request body",
+			Error: &models.ApiError{
+				Code:    "VALIDATION_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
+
+	// Validate request
+	if err := h.validator.Struct(req); err != nil {
+		return c.Status(400).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Validation failed",
+			Error: &models.ApiError{
+				Code:    "VALIDATION_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
+
+	user, err := h.userService.CreateUser(req)
+	if err != nil {
+		return c.Status(500).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Failed to create user",
+			Error: &models.ApiError{
+				Code:    "INTERNAL_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
+
+	return c.JSON(models.ApiResponse{
+		Success: true,
+		Message: "User created successfully",
+		Data:    user,
+	})
+}
+
+// PUT /admin/users/:id - Update user
+func (h *AdminHandler) UpdateUser(c *fiber.Ctx) error {
+	userID, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(400).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Invalid user ID",
+			Error: &models.ApiError{
+				Code:    "VALIDATION_ERROR",
+				Details: "User ID must be a valid integer",
+			},
+		})
+	}
+
+	var req models.UpdateProfileRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Invalid request body",
+			Error: &models.ApiError{
+				Code:    "VALIDATION_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
+
+	// Validate request
+	if err := h.validator.Struct(req); err != nil {
+		return c.Status(400).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Validation failed",
+			Error: &models.ApiError{
+				Code:    "VALIDATION_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
+
+	user, err := h.userService.UpdateUser(userID, req)
+	if err != nil {
+		return c.Status(500).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Failed to update user",
+			Error: &models.ApiError{
+				Code:    "INTERNAL_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
+
+	return c.JSON(models.ApiResponse{
+		Success: true,
+		Message: "User updated successfully",
+		Data:    user,
+	})
+}
+
+// DELETE /admin/users/:id - Delete user
+func (h *AdminHandler) DeleteUser(c *fiber.Ctx) error {
+	userID, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(400).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Invalid user ID",
+			Error: &models.ApiError{
+				Code:    "VALIDATION_ERROR",
+				Details: "User ID must be a valid integer",
+			},
+		})
+	}
+
+	// Check if trying to delete self
+	currentUserID := c.Locals("user_id")
+	if currentUserID == userID {
+		return c.Status(400).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Cannot delete your own account",
+			Error: &models.ApiError{
+				Code:    "VALIDATION_ERROR",
+				Details: "You cannot delete your own user account",
+			},
+		})
+	}
+
+	err = h.userService.DeleteUser(userID)
+	if err != nil {
+		return c.Status(500).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Failed to delete user",
+			Error: &models.ApiError{
+				Code:    "INTERNAL_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
+
+	return c.JSON(models.ApiResponse{
+		Success: true,
+		Message: "User deleted successfully",
+	})
+}
+
+// PUT /admin/users/:id/role - Update user role
+func (h *AdminHandler) UpdateUserRole(c *fiber.Ctx) error {
+	userID, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(400).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Invalid user ID",
+			Error: &models.ApiError{
+				Code:    "VALIDATION_ERROR",
+				Details: "User ID must be a valid integer",
+			},
+		})
+	}
+
+	var req struct {
+		Role string `json:"role" validate:"required,oneof=admin user"`
+	}
+
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Invalid request body",
+			Error: &models.ApiError{
+				Code:    "VALIDATION_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
+
+	// Validate request
+	if err := h.validator.Struct(req); err != nil {
+		return c.Status(400).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Validation failed",
+			Error: &models.ApiError{
+				Code:    "VALIDATION_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
+
+	// Check if trying to change own role
+	currentUserID := c.Locals("user_id")
+	if currentUserID == userID {
+		return c.Status(400).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Cannot change your own role",
+			Error: &models.ApiError{
+				Code:    "VALIDATION_ERROR",
+				Details: "You cannot change your own role",
+			},
+		})
+	}
+
+	err = h.userService.UpdateUserRole(userID, req.Role)
+	if err != nil {
+		return c.Status(500).JSON(models.ApiResponse{
+			Success: false,
+			Message: "Failed to update user role",
+			Error: &models.ApiError{
+				Code:    "INTERNAL_ERROR",
+				Details: err.Error(),
+			},
+		})
+	}
+
+	return c.JSON(models.ApiResponse{
+		Success: true,
+		Message: "User role updated successfully",
 	})
 }

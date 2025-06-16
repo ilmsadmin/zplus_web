@@ -127,7 +127,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	}
 
 	// Generate JWT token
-	token, err := utils.GenerateJWT(user.ID, user.Email, user.Role, user.Username)
+	token, err := utils.GenerateJWTWithDetails(user.ID, user.Email, user.Role, user.Username)
 	if err != nil {
 		return c.Status(500).JSON(models.ApiResponse{
 			Success: false,
@@ -235,5 +235,36 @@ func (h *AuthHandler) ResetPassword(c *fiber.Ctx) error {
 	return c.JSON(models.ApiResponse{
 		Success: true,
 		Message: "Password reset successful",
+	})
+}
+
+// GET /auth/me - Get current user info
+func (h *AuthHandler) Me(c *fiber.Ctx) error {
+	userID := c.Locals("user_id").(int)
+	
+	user, err := h.userService.GetUserByID(userID)
+	if err != nil {
+		return c.Status(404).JSON(models.ApiResponse{
+			Success: false,
+			Message: "User not found",
+			Error: &models.ApiError{
+				Code:    "NOT_FOUND",
+				Details: err.Error(),
+			},
+		})
+	}
+
+	return c.JSON(models.ApiResponse{
+		Success: true,
+		Message: "User info retrieved successfully",
+		Data: map[string]interface{}{
+			"user": map[string]interface{}{
+				"id":       user.ID,
+				"username": user.Username,
+				"email":    user.Email,
+				"role":     user.Role,
+				"full_name": user.FullName,
+			},
+		},
 	})
 }

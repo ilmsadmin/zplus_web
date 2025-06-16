@@ -8,6 +8,7 @@ export default function RegisterPage() {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
+    username: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -53,17 +54,32 @@ export default function RegisterPage() {
     }
 
     try {
-      // TODO: Implement actual register API call
-      console.log('Register attempt:', formData)
-      
-      // Mock registration success - replace with real API call
-      setTimeout(() => {
+      const response = await fetch('/api/v1/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
+          full_name: `${formData.firstName} ${formData.lastName}`.trim(),
+          phone: formData.phone || ''
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
         setLoading(false)
         setSuccess('Đăng ký thành công! Đang chuyển hướng...')
         setTimeout(() => {
           router.push('/login')
         }, 2000)
-      }, 1000)
+      } else {
+        setLoading(false)
+        setError(data.message || 'Đăng ký thất bại. Vui lòng thử lại.')
+      }
     } catch (err) {
       setLoading(false)
       setError('Đăng ký thất bại. Vui lòng thử lại.')
@@ -306,6 +322,49 @@ export default function RegisterPage() {
                       outline: 'none'
                     }}
                     placeholder="Tên"
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#667eea'
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#ecf0f1'
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  color: '#2c3e50',
+                  fontWeight: '600'
+                }}>
+                  Tên đăng nhập *
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <i className="fas fa-user" style={{
+                    position: 'absolute',
+                    left: '16px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: '#7f8c8d'
+                  }}></i>
+                  <input
+                    type="text"
+                    name="username"
+                    value={formData.username}
+                    onChange={handleChange}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px 12px 48px',
+                      border: '2px solid #ecf0f1',
+                      borderRadius: '8px',
+                      fontSize: '16px',
+                      transition: 'all 0.3s ease',
+                      outline: 'none'
+                    }}
+                    placeholder="Tên đăng nhập"
                     onFocus={(e) => {
                       e.target.style.borderColor = '#667eea'
                     }}

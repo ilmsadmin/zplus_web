@@ -208,6 +208,27 @@ export default function AdminLayout({
                 }}>
                   SYSTEM
                 </h3>
+                <a href="/admin/users" style={{
+                  display: 'block',
+                  color: 'white',
+                  textDecoration: 'none',
+                  padding: '12px 20px',
+                  transition: 'all 0.3s ease',
+                  borderLeft: '3px solid transparent'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.1)'
+                  e.currentTarget.style.borderLeftColor = '#fff'
+                  e.currentTarget.style.paddingLeft = '25px'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.borderLeftColor = 'transparent'
+                  e.currentTarget.style.paddingLeft = '20px'
+                }}>
+                  <i className="fas fa-users" style={{ width: '20px', marginRight: '12px', textAlign: 'center' }}></i>
+                  User Management
+                </a>
                 <button
                   onClick={handleLogout}
                   style={{
