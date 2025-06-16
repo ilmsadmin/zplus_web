@@ -38,7 +38,7 @@ func (s *UserService) CreateUser(req models.RegisterRequest) (*models.User, erro
 	var user models.User
 	err = s.db.QueryRow(`
 		INSERT INTO users (username, email, password_hash, full_name, phone, role, is_active, email_verified, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, 'customer', true, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		VALUES ($1, $2, $3, $4, $5, 'user', true, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 		RETURNING id, username, email, role, full_name, phone, avatar_url, is_active, email_verified, created_at, updated_at`,
 		req.Username, req.Email, hashedPassword, req.FullName, req.Phone).Scan(
 		&user.ID, &user.Username, &user.Email, &user.Role, &user.FullName, &user.Phone,
@@ -46,26 +46,6 @@ func (s *UserService) CreateUser(req models.RegisterRequest) (*models.User, erro
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
-	}
-
-	// Create wallet for new customer
-	_, err = s.db.Exec(`
-		INSERT INTO customer_wallets (user_id, balance, total_deposited, total_spent, created_at, updated_at)
-		VALUES ($1, 0.00, 0.00, 0.00, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-		user.ID)
-	if err != nil {
-		// Log error but don't fail user creation
-		fmt.Printf("Warning: Failed to create wallet for user %d: %v\n", user.ID, err)
-	}
-
-	// Create points record for new customer
-	_, err = s.db.Exec(`
-		INSERT INTO customer_points (user_id, total_points, available_points, used_points, created_at, updated_at)
-		VALUES ($1, 0, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-		user.ID)
-	if err != nil {
-		// Log error but don't fail user creation
-		fmt.Printf("Warning: Failed to create points for user %d: %v\n", user.ID, err)
 	}
 
 	return &user, nil
