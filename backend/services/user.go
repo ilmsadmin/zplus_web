@@ -181,3 +181,74 @@ func (s *UserService) ChangePassword(userID int, currentPassword, newPassword st
 
 	return nil
 }
+
+// GetAllUsers retrieves all users from the database
+func (s *UserService) GetAllUsers() ([]models.User, error) {
+	rows, err := s.db.Query(`
+		SELECT id, username, email, role, full_name, phone, avatar_url, 
+		       is_active, email_verified, created_at, updated_at
+		FROM users ORDER BY created_at DESC`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query users: %w", err)
+	}
+	defer rows.Close()
+
+	var users []models.User
+	for rows.Next() {
+		var user models.User
+		err := rows.Scan(
+			&user.ID, &user.Username, &user.Email, &user.Role,
+			&user.FullName, &user.Phone, &user.AvatarURL, &user.IsActive, 
+			&user.EmailVerified, &user.CreatedAt, &user.UpdatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan user: %w", err)
+		}
+		users = append(users, user)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating users: %w", err)
+	}
+
+	return users, nil
+}
+
+// DeleteUser deletes a user by ID
+func (s *UserService) DeleteUser(userID int) error {
+	result, err := s.db.Exec("DELETE FROM users WHERE id = $1", userID)
+	if err != nil {
+		return fmt.Errorf("failed to delete user: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("user not found")
+	}
+
+	return nil
+}
+
+// UpdateUserRole updates a user's role
+func (s *UserService) UpdateUserRole(userID int, role string) error {
+	result, err := s.db.Exec(`
+		UPDATE users SET role = $1, updated_at = CURRENT_TIMESTAMP 
+		WHERE id = $2`, role, userID)
+	if err != nil {
+		return fmt.Errorf("failed to update user role: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("user not found")
+	}
+
+	return nil
+}

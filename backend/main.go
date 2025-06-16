@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"os"
@@ -16,6 +17,10 @@ import (
 
 	"zplus_web/backend/config"
 	"zplus_web/backend/ent"
+	"zplus_web/backend/handlers/admin"
+	"zplus_web/backend/handlers/auth"
+	"zplus_web/backend/middleware"
+	"zplus_web/backend/services"
 )
 
 func main() {
@@ -42,6 +47,27 @@ func main() {
 
 	log.Println("Database connected and schema created successfully")
 
+	// Initialize SQL database connection pool for services
+	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName)
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		log.Fatalf("Failed to open database connection pool: %v", err)
+	}
+	defer db.Close()
+
+	// Test the connection
+	if err := db.Ping(); err != nil {
+		log.Fatalf("Failed to ping database: %v", err)
+	}
+
+	// Initialize services
+	userService := services.NewUserService(db)
+
+	// Initialize handlers
+	authHandler := auth.NewAuthHandler(userService)
+	adminHandler := admin.NewAdminHandler(userService)
+
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
 		AppName: "ZPlus Web GraphQL API v1.0.0",
@@ -63,6 +89,35 @@ func main() {
 			"version":  "1.0.0",
 		})
 	})
+
+	// API Routes
+	api := app.Group("/api/v1")
+
+	// Auth routes
+	authRoutes := api.Group("/auth")
+	authRoutes.Post("/register", authHandler.Register)
+	authRoutes.Post("/login", authHandler.Login)
+	authRoutes.Post("/logout", middleware.AuthRequired(), authHandler.Logout)
+	authRoutes.Get("/me", middleware.AuthRequired(), authHandler.Me)
+	authRoutes.Post("/forgot-password", authHandler.ForgotPassword)
+	authRoutes.Post("/reset-password", authHandler.ResetPassword)
+
+	// Admin routes
+	adminRoutes := api.Group("/admin")
+	adminRoutes.Post("/auth/login", adminHandler.Login)
+	
+	// Protected admin routes
+	adminProtected := adminRoutes.Group("", middleware.AuthRequired(), middleware.AdminRequired())
+	adminProtected.Get("/dashboard/stats", adminHandler.GetDashboardStats)
+	adminProtected.Get("/dashboard/recent-activity", adminHandler.GetRecentActivity)
+	
+	// User management routes
+	adminProtected.Get("/users", adminHandler.GetUsers)
+	adminProtected.Get("/users/:id", adminHandler.GetUser)
+	adminProtected.Post("/users", adminHandler.CreateUser)
+	adminProtected.Put("/users/:id", adminHandler.UpdateUser)
+	adminProtected.Delete("/users/:id", adminHandler.DeleteUser)
+	adminProtected.Put("/users/:id/role", adminHandler.UpdateUserRole)
 
 	// GraphQL endpoint
 	app.Post("/graphql", func(c *fiber.Ctx) error {
